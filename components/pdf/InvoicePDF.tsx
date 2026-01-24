@@ -1,0 +1,180 @@
+import React from 'react';
+import { Page, Text, View, Document, StyleSheet, Font } from '@react-pdf/renderer';
+
+// Create styles
+const styles = StyleSheet.create({
+    page: {
+        flexDirection: 'column',
+        backgroundColor: '#FFFFFF',
+        padding: 30,
+        fontFamily: 'Helvetica',
+    },
+    header: {
+        marginBottom: 20,
+        borderBottomWidth: 1,
+        borderBottomColor: '#111',
+        paddingBottom: 10,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    headerLeft: {},
+    headerRight: {},
+    title: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        textTransform: 'uppercase',
+    },
+    subtitle: {
+        fontSize: 10,
+        color: '#666',
+        marginTop: 4,
+    },
+    section: {
+        margin: 10,
+        padding: 10,
+        flexGrow: 1,
+    },
+    row: {
+        flexDirection: 'row',
+        borderBottomWidth: 1,
+        borderBottomColor: '#EEE',
+        paddingVertical: 8,
+    },
+    headerRow: {
+        flexDirection: 'row',
+        backgroundColor: '#F5F5F5',
+        paddingVertical: 8,
+        borderBottomWidth: 1,
+        borderBottomColor: '#111',
+    },
+    colDescription: {
+        width: '60%',
+        paddingLeft: 8,
+    },
+    colAmount: {
+        width: '40%',
+        paddingRight: 8,
+        textAlign: 'right',
+    },
+    totalRow: {
+        flexDirection: 'row',
+        marginTop: 10,
+        paddingVertical: 8,
+    },
+    totalLabel: {
+        width: '60%',
+        textAlign: 'right',
+        paddingRight: 10,
+        fontSize: 12,
+        fontWeight: 'bold',
+    },
+    totalAmount: {
+        width: '40%',
+        textAlign: 'right',
+        fontSize: 12,
+        fontWeight: 'bold',
+        paddingRight: 8,
+    },
+    footer: {
+        position: 'absolute',
+        bottom: 30,
+        left: 30,
+        right: 30,
+        textAlign: 'center',
+        color: 'grey',
+        fontSize: 10,
+        borderTopWidth: 1,
+        borderTopColor: '#EEE',
+        paddingTop: 10,
+    },
+    paymentInfo: {
+        marginTop: 20,
+        padding: 10,
+        backgroundColor: '#F9F9F9',
+        borderRadius: 4,
+    },
+    paymentTitle: {
+        fontSize: 12,
+        fontWeight: 'bold',
+        marginBottom: 4,
+    },
+    paymentText: {
+        fontSize: 10,
+        marginBottom: 2,
+    },
+});
+
+interface InvoicePDFProps {
+    invoiceData: {
+        id: string;
+        date: string;
+        customerName: string;
+        customerEmail?: string;
+        businessName: string;
+        description: string;
+        amount: number;
+        paymentLink: string;
+    };
+}
+
+const InvoicePDF = ({ invoiceData }: InvoicePDFProps) => (
+    <Document>
+        <Page size="A4" style={styles.page}>
+            {/* Header */}
+            <View style={styles.header}>
+                <View style={styles.headerLeft}>
+                    <Text style={styles.title}>{invoiceData.businessName}</Text>
+                    <Text style={styles.subtitle}>Invoice #{invoiceData.id.slice(0, 8).toUpperCase()}</Text>
+                </View>
+                <View style={styles.headerRight}>
+                    <Text style={{ fontSize: 10 }}>Date: {invoiceData.date}</Text>
+                </View>
+            </View>
+
+            {/* Customer Info */}
+            <View style={{ marginBottom: 20 }}>
+                <Text style={{ fontSize: 12, color: '#999', marginBottom: 4 }}>Bill To:</Text>
+                <Text style={{ fontSize: 14 }}>{invoiceData.customerName}</Text>
+                <Text style={{ fontSize: 10 }}>{invoiceData.customerEmail}</Text>
+            </View>
+
+            {/* Table Header */}
+            <View style={styles.headerRow}>
+                <Text style={[styles.colDescription, { fontWeight: 'bold' }]}>Description</Text>
+                <Text style={[styles.colAmount, { fontWeight: 'bold' }]}>Amount</Text>
+            </View>
+
+            {/* Table Content */}
+            <View style={styles.row}>
+                <Text style={styles.colDescription}>{invoiceData.description}</Text>
+                <Text style={styles.colAmount}>NGN {invoiceData.amount.toLocaleString()}</Text>
+            </View>
+
+            {/* Total */}
+            <View style={styles.totalRow}>
+                <Text style={styles.totalLabel}>Total Due:</Text>
+                <Text style={styles.totalAmount}>NGN {invoiceData.amount.toLocaleString()}</Text>
+            </View>
+
+            {/* Payment Info */}
+            <View style={styles.paymentInfo}>
+                <Text style={styles.paymentTitle}>Payment Instructions</Text>
+                <Text style={styles.paymentText}>Please make payment using the link below:</Text>
+                <Text style={[styles.paymentText, { color: 'blue', textDecoration: 'underline' }]}>
+                    {invoiceData.paymentLink}
+                </Text>
+                <Text style={{ fontSize: 8, color: '#666', marginTop: 5 }}>
+                    Thank you for your business!
+                </Text>
+            </View>
+
+            {/* Footer */}
+            <View style={styles.footer}>
+                <Text>Generated by SmartFlow Africa</Text>
+            </View>
+        </Page>
+    </Document>
+);
+
+export default InvoicePDF;

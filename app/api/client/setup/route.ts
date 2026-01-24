@@ -1,0 +1,70 @@
+import { NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+import prisma from '@/lib/prisma';
+import { revalidatePath } from 'next/cache';
+
+export async function POST(request: Request) {
+    try {
+        const session = await getServerSession(authOptions);
+        if (!session?.user?.email) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const body = await request.json();
+        const { clientId, info, services, config, whatsapp } = body;
+
+        if (!clientId) {
+            return NextResponse.json({ error: 'Client ID is required' }, { status: 400 });
+        }
+
+        const dbUser = await prisma.user.findUnique({
+            where: { email: session.user.email },
+            include: { client: true }
+        });
+
+        if (dbUser?.role !== 'ADMIN' && dbUser?.client?.id !== clientId) {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
+
+        await prisma.$transaction(async (tx) => {
+            await tx.client.update({
+                where: { id: clientId },
+                data: {
+                    businessName: info?.name,
+                    ownerName: info?.owner,
+                    phone: info?.phone,
+                    address: info?.address || config?.address,
+                    hours: config?.hours,
+                    metadata: {
+                        onboardingComplete: true,
+                        deliveryOptions: config?.deliveryOptions,
+                        whatsappConfig: whatsapp
+                    }
+                }
+            });
+
+            if (Array.isArray(services) && services.length > 0) {
+                await tx.service.createMany({
+                    data: services.map((s: any) => ({
+                        clientId,
+                        name: s.name,
+                        description: s.description,
+                        price: parseFloat(s.price),
+                        category: s.category,
+                        duration: 30,
+                        isActive: true
+                    }))
+                });
+            }
+        });
+
+        revalidatePath('/client', 'layout');
+
+        return NextResponse.json({ success: true });
+
+    } catch (error) {
+        console.error('Onboarding Setup Error:', error);
+        return NextResponse.json({ error: 'Setup failed' }, { status: 500 });
+    }
+}

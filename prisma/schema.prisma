@@ -1,0 +1,463 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String?  // Hashed password for NextAuth.js
+  name      String?
+  role      UserRole @default(CLIENT)
+  clientId  String?  @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  branchId  String?
+  branch    Branch?  @relation(fields: [branchId], references: [id])
+  client    Client?  @relation(fields: [clientId], references: [id])
+
+  @@index([email])
+  @@index([clientId])
+  @@index([branchId])
+}
+
+model Client {
+  id                   String                @id @default(cuid())
+  businessName         String
+  businessType         BusinessType
+  ownerName            String
+  phone                String
+  email                String                @unique
+  address              String?
+  hours                Json?
+  planTier             PlanTier              @default(BASIC)
+  monthlyFee           Int
+  status               ClientStatus          @default(ACTIVE)
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  nextBillingDate      DateTime?
+  sectorId             String?
+  metadata             Json?
+  maxClients           Int?
+  appointments         Appointment[]
+  bookingRule          BookingRule?
+  botConfig            BotConfig?
+  branches             Branch[]
+  branding             Branding?
+  sector               BusinessSector?       @relation(fields: [sectorId], references: [id])
+  Conversation         Conversation[]
+  customers            Customer[]
+  faqs                 FAQ[]
+  integrations         Integration?
+  jobs                 Job[]
+  messages             Message[]
+  services             Service[]
+  subscriptionPayments SubscriptionPayment[]
+  timeSlots            TimeSlot[]
+  user                 User?
+
+  @@index([businessType])
+  @@index([status])
+  @@index([email])
+}
+
+model Branch {
+  id           String        @id @default(cuid())
+  name         String
+  address      String
+  phone        String?
+  managerId    String?
+  isActive     Boolean       @default(true)
+  clientId     String
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  appointments Appointment[]
+  client       Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  customers    Customer[]
+  jobs         Job[]
+  services     Service[]
+  timeSlots    TimeSlot[]
+  users        User[]
+
+  @@index([clientId])
+}
+
+model BusinessSector {
+  id        String   @id @default(cuid())
+  name      String
+  code      String   @unique
+  icon      String
+  color     String
+  config    Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  clients   Client[]
+
+  @@index([name])
+}
+
+model Branding {
+  id             String   @id @default(cuid())
+  clientId       String   @unique
+  logoUrl        String?
+  primaryColor   String   @default("#3B82F6")
+  secondaryColor String   @default("#1F2937")
+  font           String   @default("Inter")
+  tagline        String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  client         Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+}
+
+model Service {
+  id           String        @id @default(cuid())
+  clientId     String
+  name         String
+  description  String?
+  price        Decimal
+  duration     Int?
+  category     String?
+  metadata     Json?
+  isActive     Boolean       @default(true)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  branchId     String?
+  appointments Appointment[]
+  branch       Branch?       @relation(fields: [branchId], references: [id])
+  client       Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([clientId])
+  @@index([branchId])
+  @@index([clientId, category])
+  @@index([clientId, isActive])
+}
+
+model SubscriptionPayment {
+  id            String    @id @default(cuid())
+  clientId      String
+  amount        Int
+  currency      String    @default("NGN")
+  reference     String    @unique
+  status        String
+  paymentMethod String?
+  paidAt        DateTime?
+  createdAt     DateTime  @default(now())
+  client        Client    @relation(fields: [clientId], references: [id])
+
+  @@index([clientId])
+}
+
+model Message {
+  id             String         @id @default(cuid())
+  clientId       String
+  customerPhone  String
+  customerName   String?
+  messageText    String
+  botResponse    String?
+  category       String?
+  handledBy      MessageHandler @default(BOT)
+  status         MessageStatus  @default(COMPLETED)
+  timestamp      DateTime       @default(now())
+  conversationId String?
+  metadata       Json?
+  client         Client         @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  conversation   Conversation?  @relation(fields: [conversationId], references: [id])
+
+  @@index([clientId])
+  @@index([customerPhone])
+  @@index([timestamp])
+}
+
+model Conversation {
+  id            String               @id @default(cuid())
+  clientId      String
+  customerPhone String
+  customerName  String?
+  status        ConversationStatus   @default(ACTIVE)
+  priority      ConversationPriority @default(MEDIUM)
+  assignedTo    String?
+  lastMessageAt DateTime             @default(now())
+  unreadCount   Int                  @default(0)
+  metadata      Json?
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+  client        Client               @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  messages      Message[]
+
+  @@unique([clientId, customerPhone])
+  @@index([clientId])
+  @@index([status])
+  @@index([assignedTo])
+}
+
+model Job {
+  id            String       @id @default(cuid())
+  clientId      String
+  customerId    String?
+  customerPhone String
+  customerName  String
+  description   String
+  status        String
+  price         Int?
+  notes         String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  completedAt   DateTime?
+  dueDate       DateTime?
+  metadata      Json?
+  priority      String       @default("MEDIUM")
+  finalAmount   Int?
+  paymentStatus String       @default("PENDING")
+  branchId      String?
+  branch        Branch?      @relation(fields: [branchId], references: [id])
+  client        Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  customer      Customer?    @relation(fields: [customerId], references: [id])
+  payments      JobPayment[]
+
+  @@index([clientId])
+  @@index([branchId])
+  @@index([customerId])
+  @@index([status])
+  @@index([paymentStatus])
+  @@index([createdAt])
+  @@index([dueDate])
+}
+
+model Customer {
+  id               String        @id @default(cuid())
+  clientId         String
+  phone            String
+  name             String
+  email            String?
+  firstVisit       DateTime      @default(now())
+  lastVisit        DateTime?
+  totalVisits      Int           @default(1)
+  totalSpent       Int           @default(0)
+  preferredContact String?
+  notes            String?
+  metadata         Json?
+  branchId         String?
+  appointments     Appointment[]
+  branch           Branch?       @relation(fields: [branchId], references: [id])
+  client           Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  jobs             Job[]
+
+  @@unique([clientId, phone])
+  @@index([clientId])
+  @@index([branchId])
+  @@index([phone])
+}
+
+model JobPayment {
+  id            String    @id @default(cuid())
+  jobId         String
+  clientId      String
+  amount        Int
+  currency      String    @default("NGN")
+  reference     String    @unique
+  status        String
+  paymentMethod String?
+  paidAt        DateTime?
+  receiptUrl    String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  job           Job       @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId])
+  @@index([clientId])
+  @@index([reference])
+}
+
+model Appointment {
+  id            String            @id @default(cuid())
+  clientId      String
+  customerId    String?
+  customerPhone String
+  customerName  String
+  date          DateTime
+  time          String
+  status        AppointmentStatus @default(SCHEDULED)
+  reminderSent  Boolean           @default(false)
+  notes         String?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  duration      Int               @default(30)
+  serviceId     String
+  branchId      String?
+  branch        Branch?           @relation(fields: [branchId], references: [id])
+  client        Client            @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  customer      Customer?         @relation(fields: [customerId], references: [id])
+  service       Service           @relation(fields: [serviceId], references: [id])
+
+  @@index([clientId, date])
+  @@index([branchId])
+  @@index([customerId])
+  @@index([status])
+}
+
+model TimeSlot {
+  id         String  @id @default(cuid())
+  dayOfWeek  Int
+  startTime  String
+  endTime    String
+  resourceId String?
+  clientId   String
+  branchId   String?
+  branch     Branch? @relation(fields: [branchId], references: [id])
+  client     Client  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([clientId, dayOfWeek])
+  @@index([branchId])
+}
+
+model BookingRule {
+  id                      String @id @default(cuid())
+  clientId                String @unique
+  advanceBookingDays      Int    @default(30)
+  cancellationNoticeHours Int    @default(24)
+  maxBookingsPerSlot      Int    @default(1)
+  bufferMinutes           Int    @default(15)
+  client                  Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+}
+
+model Integration {
+  id                   String   @id @default(cuid())
+  clientId             String   @unique
+  whatsappNumber       String?
+  whatsappInstanceId   String?
+  whatsappStatus       String?  @default("disconnected")
+  paystackPublicKey    String?
+  paystackSecretKey    String?
+  paystackStatus       String?  @default("inactive")
+  googleCalendarId     String?
+  googleCalendarStatus String?  @default("disconnected")
+  n8nWebhookUrl        String?
+  n8nApiKey            String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  client               Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+}
+
+model SystemLog {
+  id        String   @id @default(cuid())
+  clientId  String?
+  level     LogLevel
+  message   String
+  metadata  Json?
+  timestamp DateTime @default(now())
+
+  @@index([clientId])
+  @@index([level])
+  @@index([timestamp])
+}
+
+model FAQ {
+  id        String   @id @default(cuid())
+  clientId  String
+  question  String
+  answer    String
+  keywords  String[]
+  isActive  Boolean  @default(true)
+  priority  Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([clientId])
+  @@index([clientId, isActive])
+}
+
+model BotConfig {
+  id               String   @id @default(cuid())
+  clientId         String   @unique
+  isEnabled        Boolean  @default(true)
+  greetingMessage  String?
+  fallbackMessage  String?
+  workingHoursOnly Boolean  @default(false)
+  autoEscalate     Boolean  @default(true)
+  escalateAfter    Int      @default(3)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  client           Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+}
+
+enum UserRole {
+  ADMIN
+  CLIENT
+}
+
+enum BusinessType {
+  AUTO_MECHANIC
+  RESTAURANT
+  SALON
+  HOTEL
+  RETAIL
+  HEALTHCARE
+  REAL_ESTATE
+  EDUCATION
+  LOGISTICS
+  FITNESS
+  PROFESSIONAL_SERVICES
+  OTHER
+}
+
+enum PlanTier {
+  BASIC
+  PROFESSIONAL
+  ENTERPRISE
+}
+
+enum ClientStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  TRIAL
+}
+
+enum MessageHandler {
+  BOT
+  HUMAN
+}
+
+enum MessageStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum ConversationStatus {
+  ACTIVE
+  WAITING_FOR_RESPONSE
+  NEEDS_HUMAN
+  HUMAN_HANDLING
+  RESOLVED
+}
+
+enum ConversationPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  CONFIRMED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum LogLevel {
+  INFO
+  WARNING
+  ERROR
+  CRITICAL
+}
