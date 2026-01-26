@@ -18,7 +18,8 @@ export async function getClientProfile() {
             include: {
                 client: {
                     include: {
-                        branding: true
+                        branding: true,
+                        integrations: true
                     }
                 }
             }
@@ -51,6 +52,14 @@ export async function getClientProfile() {
                     secondaryColor: user.client.branding.secondaryColor,
                     font: user.client.branding.font || 'Inter',
                     tagline: user.client.branding.tagline || undefined,
+                } : undefined,
+                integrations: user.client.integrations ? {
+                    whatsappNumber: user.client.integrations.whatsappNumber || undefined,
+                    whatsappStatus: user.client.integrations.whatsappStatus || 'disconnected',
+                    whatsappInstanceId: user.client.integrations.whatsappInstanceId || undefined,
+                    paystackPublicKey: user.client.integrations.paystackPublicKey || undefined,
+                    paystackSecretKey: user.client.integrations.paystackSecretKey || undefined,
+                    paystackStatus: user.client.integrations.paystackStatus || 'inactive'
                 } : undefined
             }
         };
@@ -69,11 +78,13 @@ export async function getTeamMembers(clientId: string) {
         const client = await prisma.client.findUnique({
             where: { id: clientId },
             include: {
-                user: {
+                users: {
                     select: {
                         id: true,
                         email: true,
-                        role: true
+                        role: true,
+                        staffRole: true,
+                        name: true
                     }
                 }
             }
@@ -81,20 +92,26 @@ export async function getTeamMembers(clientId: string) {
 
         if (!client) return { success: false, error: 'Client not found' };
 
-        const registeredMembers = client.user ? [{
-            id: client.user.id,
-            name: client.user.role === 'CLIENT' || client.user.role === 'ADMIN' ? (client.ownerName || client.user.email.split('@')[0]) : client.user.email.split('@')[0],
+        // Real Users (Owner + Staff)
+        const registeredMembers = (client.users || []).map((u: any) => ({
+            id: u.id,
+            name: u.name || u.email.split('@')[0],
+            email: u.email,
             status: 'online',
-            role: client.user.role,
+            role: u.staffRole || 'AGENT',
+            // If they are the owner (UserRole=CLIENT and no staffRole or explicit OWNER), label as Owner
+            displayRole: u.staffRole || (u.role === 'CLIENT' ? 'OWNER' : 'AGENT'),
             type: 'USER'
-        }] : [];
+        }));
 
         const metadata = client.metadata as any;
+        // Legacy manual members
         const manualMembers = (metadata?.whatsappConfig?.teamMembers || []).map((name: string, idx: number) => ({
             id: `manual_${idx}`,
             name: name,
             status: 'offline',
-            role: 'STAFF',
+            role: 'AGENT',
+            displayRole: 'Manual Entry',
             type: 'MANUAL'
         }));
 

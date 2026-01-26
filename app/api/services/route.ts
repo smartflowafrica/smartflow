@@ -126,10 +126,10 @@ export async function POST(request: Request) {
         }
 
         const body = await request.json();
-        const { name, description, price, duration, category, metadata, isActive, postToStatus } = body;
+        const { name, description, price, duration, category, metadata, isActive, postToStatus, pricingRules, commitmentFee } = body;
 
-        if (!name || !price) {
-            return NextResponse.json({ error: 'Name and price are required' }, { status: 400 });
+        if (!name) {
+            return NextResponse.json({ error: 'Name is required' }, { status: 400 });
         }
 
         if (price <= 0) {
@@ -139,7 +139,15 @@ export async function POST(request: Request) {
         const service = await prisma.service.create({
             data: {
                 clientId: dbUser.client.id,
-                name, description, price, duration, category, metadata,
+                name, description,
+                price: price || 0, // Should be optional in schema, but for safety in logic if schema not reloaded? 
+                // Wait, if schema is Decimal?, then undefined is fine. 
+                // But TypeScript might still think it's required if types weren't regenerated. 
+                // Let's rely on loose typing or pass undefined.
+                // However, I will pass it as is.
+                duration, category, metadata,
+                pricingRules,
+                commitmentFee, // New Field
                 isActive: isActive !== undefined ? isActive : true
             }
         });

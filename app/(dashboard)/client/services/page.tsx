@@ -9,11 +9,13 @@ interface Service {
     id: string;
     name: string;
     description: string;
-    price: number;
+    price?: number;
+    commitmentFee?: number; // New Field  
     duration: number; // in minutes
     category: string;
     active: boolean;
     metadata?: any;
+    pricingRules?: { location: string; price: number }[];
 }
 
 export default function ServicesPage() {
@@ -29,6 +31,7 @@ export default function ServicesPage() {
     const [isUploading, setIsUploading] = useState(false);
 
     // Initialize images when editing
+    // Initialize images
     useEffect(() => {
         if (editingService?.metadata?.images) {
             setImages(editingService.metadata.images);
@@ -36,6 +39,53 @@ export default function ServicesPage() {
             setImages([]);
         }
     }, [editingService, isModalOpen]);
+
+    const [error, setError] = useState('');
+
+    // Controlled Inputs State
+    const [priceDisplay, setPriceDisplay] = useState('');
+    const [feeDisplay, setFeeDisplay] = useState('');
+    const [pricingRules, setPricingRules] = useState<{ location: string; price: string }[]>([]);
+
+    useEffect(() => {
+        if (isModalOpen) {
+            setPriceDisplay(editingService?.price ? Number(editingService.price).toLocaleString() : '');
+            setFeeDisplay(editingService?.commitmentFee ? Number(editingService.commitmentFee).toLocaleString() : '');
+
+            if (editingService?.pricingRules && Array.isArray(editingService.pricingRules)) {
+                setPricingRules(editingService.pricingRules as any);
+            } else {
+                setPricingRules([]);
+            }
+        }
+    }, [editingService, isModalOpen]);
+
+    const formatCurrencyInput = (value: string) => {
+        // Remove non-digits
+        const number = value.replace(/[^0-9]/g, '');
+        if (!number) return '';
+        return Number(number).toLocaleString();
+    };
+
+    const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>, setter: (val: string) => void) => {
+        setter(formatCurrencyInput(e.target.value));
+    };
+
+    const addPricingRule = () => {
+        setPricingRules([...pricingRules, { location: '', price: '' }]);
+    };
+
+    const removePricingRule = (index: number) => {
+        setPricingRules(rules => rules.filter((_, i) => i !== index));
+    };
+
+    const updatePricingRule = (index: number, field: 'location' | 'price', value: string) => {
+        setPricingRules(rules => {
+            const newRules = [...rules];
+            newRules[index] = { ...newRules[index], [field]: value };
+            return newRules;
+        });
+    };
 
     // Fetch Services
     const fetchServices = async () => {
@@ -97,11 +147,13 @@ export default function ServicesPage() {
         const data = {
             name: formData.get('name'),
             description: formData.get('description'),
-            price: parseFloat(formData.get('price') as string),
+            price: formData.get('price') ? parseFloat((formData.get('price') as string).replace(/,/g, '')) : undefined,
+            commitmentFee: formData.get('commitmentFee') ? parseFloat((formData.get('commitmentFee') as string).replace(/,/g, '')) : undefined,
             duration: parseInt(formData.get('duration') as string),
             category: formData.get('category'),
             metadata,
             postToStatus, // New Field
+            pricingRules: pricingRules.filter(r => r.location && r.price).map(r => ({ location: r.location, price: parseFloat(r.price.replace(/,/g, '')) })),
             isActive: true
         };
 
@@ -124,8 +176,9 @@ export default function ServicesPage() {
             setIsModalOpen(false);
             setEditingService(null);
             fetchServices();
-        } catch (error) {
-            toast.error('Failed to save service');
+        } catch (error: any) {
+            console.error(error);
+            toast.error(error.message || 'Failed to save service');
         }
     };
 
@@ -223,7 +276,7 @@ export default function ServicesPage() {
                                     <span>{service.duration} mins</span>
                                 </div>
                                 <div className="font-bold text-slate-900 text-lg">
-                                    ₦{service.price.toLocaleString()}
+                                    {service.price ? '₦' + Number(service.price).toLocaleString() : 'Price Varies'}
                                 </div>
                             </div>
                         </div>
@@ -256,14 +309,25 @@ export default function ServicesPage() {
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Price (₦)</label>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Price (₦) <span className="text-slate-400 font-normal">(Leave empty for text-based/location pricing)</span></label>
                                     <input
                                         name="price"
-                                        type="number"
-                                        defaultValue={editingService?.price}
-                                        required
+                                        type="text"
+                                        value={priceDisplay}
+                                        onChange={(e) => handlePriceChange(e, setPriceDisplay)}
                                         className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                                        placeholder="5000"
+                                        placeholder="Optional"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Commitment Fee (Optional)</label>
+                                    <input
+                                        name="commitmentFee"
+                                        type="text"
+                                        value={feeDisplay}
+                                        onChange={(e) => handlePriceChange(e, setFeeDisplay)}
+                                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                        placeholder="0"
                                     />
                                 </div>
                                 <div>
@@ -328,18 +392,46 @@ export default function ServicesPage() {
                                     <p className="text-xs text-slate-400">Upload multiple images. They will be sent as an album.</p>
                                 </div>
                                 {images.length > 0 && (
-                                    <div className="mt-3 flex items-center gap-2 bg-green-50 p-3 rounded-lg border border-green-100">
-                                        <input
-                                            type="checkbox"
-                                            name="postToStatus"
-                                            id="postToStatus"
-                                            className="w-4 h-4 text-green-600 rounded focus:ring-green-500"
-                                        />
-                                        <label htmlFor="postToStatus" className="text-sm font-medium text-green-800 cursor-pointer select-none">
-                                            Post to WhatsApp Status
-                                        </label>
-                                    </div>
+                                    null
                                 )}
+                            </div>
+
+                            {/* Dynamic Pricing Rules */}
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Location-Based Pricing (Optional)</label>
+                                <div className="space-y-2">
+                                    {pricingRules.map((rule, index) => (
+                                        <div key={index} className="flex gap-2 items-center">
+                                            <input
+                                                placeholder="Location (e.g. Lekki)"
+                                                value={rule.location}
+                                                onChange={(e) => updatePricingRule(index, 'location', e.target.value)}
+                                                className="flex-1 px-3 py-2 border rounded-lg text-sm"
+                                            />
+                                            <input
+                                                type="number"
+                                                placeholder="Price"
+                                                value={rule.price}
+                                                onChange={(e) => updatePricingRule(index, 'price', e.target.value)}
+                                                className="w-24 px-3 py-2 border rounded-lg text-sm"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => removePricingRule(index)}
+                                                className="text-red-500 hover:text-red-700 p-1"
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
+                                        </div>
+                                    ))}
+                                    <button
+                                        type="button"
+                                        onClick={addPricingRule}
+                                        className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
+                                    >
+                                        <Plus size={16} /> Add Location Price
+                                    </button>
+                                </div>
                             </div>
 
                             <div className="pt-4 flex gap-3">

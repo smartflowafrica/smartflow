@@ -1,6 +1,7 @@
 import { ChatFlow, FlowResponse } from './types';
 import prisma from '@/lib/prisma';
 import { AvailabilityChecker } from '@/lib/services/booking/AvailabilityChecker';
+import { initializePaystackPayment } from '@/lib/paystack';
 
 export class BookingFlow implements ChatFlow {
     id = 'booking';
@@ -15,8 +16,75 @@ export class BookingFlow implements ChatFlow {
 
         switch (step) {
             case 'start':
-                // Initial trigger. Check if service was mentioned? 
-                // For simplicity, always ask for service first unless we add NLU slot filling later.
+                // 1. Check if Service was already identified by MessageProcessor
+                if (data.serviceId && data.serviceName) {
+                    const service = {
+                        id: data.serviceId,
+                        name: data.serviceName,
+                        duration: data.serviceDuration,
+                        category: data.serviceCategory, // Assuming we pass this or fetch it
+                        pricingRules: data.pricingRules
+                    };
+
+                    // Ask for location if Inspection category OR has pricingRules (re-using logic validation if needed)
+                    // But simpler: just trust the data or re-fetch fully if we need category/rules that might be missing in data
+                    // Let's re-fetch to be safe and get category/pricingRules
+                    const fullService = await prisma.service.findUnique({ where: { id: data.serviceId } });
+
+                    if (fullService) {
+                        const hasPricingRules = (fullService as any).pricingRules && (fullService as any).pricingRules.length > 0;
+                        const isInspection = fullService.category === 'Inspection';
+
+                        if (isInspection || hasPricingRules) {
+                            return {
+                                response: `Okay, ${fullService.name}. Where is the vehicle located? (e.g., Lekki, Ikeja)`,
+                                nextStep: 'ask_location',
+                                data: {
+                                    serviceId: fullService.id,
+                                    serviceName: fullService.name,
+                                    serviceDuration: fullService.duration,
+                                    pricingRules: (fullService as any).pricingRules || []
+                                }
+                            };
+                        }
+
+                        return {
+                            response: `Okay, ${fullService.name}. What date would you like to come in? (e.g., Tomorrow, Next Monday, or YYYY-MM-DD)`,
+                            nextStep: 'ask_date',
+                            data: { serviceId: fullService.id, serviceName: fullService.name, serviceDuration: fullService.duration }
+                        };
+                    }
+                }
+
+                // Attempt to match service immediately from the trigger message
+                if (message && message.toLowerCase() !== 'menu' && message.toLowerCase() !== 'hi' && message.toLowerCase() !== 'hello') {
+                    const service = await this.findService(context.clientId, message);
+                    if (service) {
+                        // Ask for location if Inspection category OR has pricingRules
+                        const hasPricingRules = (service as any).pricingRules && (service as any).pricingRules.length > 0;
+                        const isInspection = service.category === 'Inspection';
+
+                        if (isInspection || hasPricingRules) {
+                            return {
+                                response: `Okay, ${service.name}. Where is the vehicle located? (e.g., Lekki, Ikeja)`,
+                                nextStep: 'ask_location',
+                                data: {
+                                    serviceId: service.id,
+                                    serviceName: service.name,
+                                    serviceDuration: service.duration,
+                                    pricingRules: (service as any).pricingRules || []
+                                }
+                            };
+                        }
+
+                        return {
+                            response: `Okay, ${service.name}. What date would you like to come in? (e.g., Tomorrow, Next Monday, or YYYY-MM-DD)`,
+                            nextStep: 'ask_date',
+                            data: { serviceId: service.id, serviceName: service.name, serviceDuration: service.duration }
+                        };
+                    }
+                }
+
                 return {
                     response: "I can help you book an appointment. What service would you like to book? (e.g., Oil Change, Brake Check)",
                     nextStep: 'ask_service',
@@ -39,10 +107,50 @@ export class BookingFlow implements ChatFlow {
                         nextStep: 'ask_service' // Stay on same step
                     };
                 }
+                // Ask for location if Inspection category OR has pricingRules
+                const hasPricingRules = (service as any).pricingRules && (service as any).pricingRules.length > 0;
+                const isInspection = service.category === 'Inspection';
+
+                if (isInspection || hasPricingRules) {
+                    return {
+                        response: `Okay, ${service.name}. Where is the vehicle located? (e.g., Lekki, Ikeja)`,
+                        nextStep: 'ask_location',
+                        data: {
+                            serviceId: service.id,
+                            serviceName: service.name,
+                            serviceDuration: service.duration,
+                            pricingRules: (service as any).pricingRules || []
+                        }
+                    };
+                }
+
                 return {
                     response: `Okay, ${service.name}. What date would you like to come in? (e.g., Tomorrow, Next Monday, or YYYY-MM-DD)`,
                     nextStep: 'ask_date',
                     data: { serviceId: service.id, serviceName: service.name, serviceDuration: service.duration }
+                };
+
+            case 'ask_location':
+                const location = message.trim();
+                let matchedPrice = 0;
+                let priceSource = 'Base Price';
+
+                // improved location matching logic
+                if (data.pricingRules && data.pricingRules.length > 0) {
+                    const lowerLoc = location.toLowerCase();
+                    const rule = data.pricingRules.find((r: any) => lowerLoc.includes(r.location.toLowerCase()) || r.location.toLowerCase().includes(lowerLoc));
+                    if (rule) {
+                        matchedPrice = Number(rule.price);
+                        priceSource = `Location: ${rule.location}`;
+                    }
+                }
+
+                const priceMsg = matchedPrice > 0 ? ` (Est: ₦${matchedPrice.toLocaleString()})` : '';
+
+                return {
+                    response: `Got it. Inspection at ${location}${priceMsg}. What date would you like to come in? (e.g., Tomorrow, Next Monday)`,
+                    nextStep: 'ask_date',
+                    data: { ...data, location, matchedPrice }
                 };
 
             case 'ask_date':
@@ -95,18 +203,27 @@ export class BookingFlow implements ChatFlow {
                 }
 
                 // If name known, proceed to confirm directly
-                return await this.confirmBooking(context, data.serviceId, data.serviceName, data.date, time, context.customerName);
+                return await this.confirmBooking(context, data.serviceId, data.serviceName, data.date, time, context.customerName, data.matchedPrice, data.location);
 
             case 'ask_name':
                 const name = message.trim();
-                return await this.confirmBooking(context, data.serviceId, data.serviceName, data.date, data.time, name);
+                return await this.confirmBooking(context, data.serviceId, data.serviceName, data.date, data.time, name, data.matchedPrice, data.location);
 
             default:
                 return { response: "Something went wrong. Let's start over.", nextStep: undefined };
         }
     }
 
-    private async confirmBooking(context: any, serviceId: string, serviceName: string, date: string, time: string, name: string): Promise<FlowResponse> {
+    private async confirmBooking(
+        context: any,
+        serviceId: string,
+        serviceName: string,
+        date: string,
+        time: string,
+        name: string,
+        matchedPrice?: number,
+        location?: string
+    ): Promise<FlowResponse> {
         // Create Appointment
         try {
             // 1. Ensure customer exists (upsert)
@@ -121,20 +238,95 @@ export class BookingFlow implements ChatFlow {
                 }
             });
 
-            // 2. Create Appointment
-            await prisma.appointment.create({
+            // 2. Fetch Service to check for Fee
+            const service = await prisma.service.findUnique({ where: { id: serviceId } });
+
+            // Priority: Explicit Commitment Fee > matchedPrice (only if explicit fee missing) > 0
+            // If the service has a commitment fee (e.g. 100k), we should use THAT as the fee, 
+            // even if matchedPrice (e.g. 150k location price) is higher.
+            const baseFee = (service as any)?.commitmentFee ? Number((service as any).commitmentFee) : 0;
+
+            let fee = baseFee;
+            // Only fall back to matchedPrice if no specific commitment fee is set
+            if (fee === 0 && matchedPrice !== undefined) {
+                fee = matchedPrice;
+            }
+
+            let status: any = 'CONFIRMED';
+            let paymentLink = null;
+
+            if (fee > 0) {
+                status = 'PENDING_PAYMENT';
+            }
+
+            const notes = [
+                fee > 0 ? `Commitment Fee: ₦${fee.toLocaleString()}` : null,
+                location ? `Location: ${location}` : null,
+                'Booked via WhatsApp Bot'
+            ].filter(Boolean).join('\n');
+
+            // 3. Create Appointment
+            const appointment = await prisma.appointment.create({
                 data: {
                     clientId: context.clientId,
                     customerId: customer.id,
                     customerName: name,
                     customerPhone: context.customerPhone,
                     serviceId,
-                    date: new Date(date), // Note: Need proper ISO datetime combination
+                    date: new Date(date),
                     time,
-                    status: 'CONFIRMED', // Auto-confirm for now
-                    notes: 'Booked via WhatsApp Bot'
+                    status,
+                    notes
                 }
             });
+
+            // 4. Generate Payment Link if Fee > 0
+            if (fee > 0) {
+                try {
+                    // Fetch Client Integration
+                    const integration = await prisma.integration.findUnique({
+                        where: { clientId: context.clientId }
+                    });
+
+                    // Use client key if available, otherwise undefined (will fallback to env in lib/paystack)
+                    const paystackKey = integration?.paystackSecretKey || undefined;
+
+                    if (!paystackKey && !process.env.PAYSTACK_SECRET_KEY) {
+                        console.error(`[BookingFlow] Client ${context.clientId} Missing Paystack Key and no System Fallback`);
+                        return {
+                            response: `Your appointment is reserved, but online payment is not configured yet. An agent will contact you for the ₦${fee.toLocaleString()} commitment fee.`,
+                            nextStep: undefined,
+                            action: 'escalate'
+                        };
+                    }
+
+                    const payment = await initializePaystackPayment({
+                        email: customer.email || `${context.customerPhone}@smartflow.app`, // Fallback email
+                        amount: fee * 100, // Convert to kobo
+                        reference: `r-${appointment.id}-${Date.now()}`,
+                        metadata: {
+                            appointmentId: appointment.id,
+                            clientId: context.clientId,
+                            type: 'COMMITMENT_FEE'
+                        }
+                    }, paystackKey);
+
+                    paymentLink = payment.data.authorization_url;
+                } catch (pxError: any) {
+                    console.error('Paystack initialization failed', pxError);
+                    // Fallback to manual? Or error?
+                    return {
+                        response: `Your appointment is reserved, but we couldn't generate a payment link right now (${pxError.message || 'Error'}). An agent will contact you for the ₦${fee.toLocaleString()} commitment fee.`,
+                        nextStep: undefined,
+                        action: 'escalate'
+                    };
+                }
+
+                return {
+                    response: `✅ Appointment Reserved!\n\nService: ${serviceName}\nDate: ${date}\nTime: ${time}\n\n⚠️ **Action Required**: A commitment fee of ₦${fee.toLocaleString()} is required to confirm this booking.\n\nPlease pay here: ${paymentLink}`,
+                    nextStep: undefined
+                };
+            }
 
             return {
                 response: `✅ Appointment Confirmed!\n\nService: ${serviceName}\nDate: ${date}\nTime: ${time}\n\nWe look forward to seeing you, ${name}!`,
@@ -152,7 +344,6 @@ export class BookingFlow implements ChatFlow {
     }
 
     // --- Helpers ---
-    // (Simplistic implementations for prototype)
     private async findService(clientId: string, query: string) {
         // Simple fuzzy match or startsWith
         const services = await prisma.service.findMany({
@@ -168,7 +359,8 @@ export class BookingFlow implements ChatFlow {
         const lower = input.toLowerCase();
         const today = new Date();
 
-        if (lower.includes('tomorrow')) {
+        // Handle common typos for tomorrow
+        if (lower.includes('tomorrow') || lower.includes('tommorrow') || lower.includes('tomorow') || lower.includes('tmr')) {
             const tmr = new Date(today);
             tmr.setDate(today.getDate() + 1);
             return tmr.toISOString().split('T')[0];

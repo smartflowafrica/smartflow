@@ -2,8 +2,10 @@
 
 import { getCurrentUser } from '@/lib/auth-helpers';
 import prisma from '@/lib/prisma';
+import { unstable_noStore as noStore } from 'next/cache';
 
 export async function getClientJobs(clientId: string) {
+    noStore();
     try {
         const user = await getCurrentUser();
         if (!user) return { success: false, error: 'Unauthorized' };
@@ -61,8 +63,27 @@ export async function getDashboardStats(clientId: string) {
         });
         const revenueToday = aggregation._sum.price || 0;
 
+        // NEW: Actual Cash Collected (Sum of Payments)
+        const paymentAggregation = await prisma.jobPayment.aggregate({
+            _sum: { amount: true }, // Stored in kobo
+            where: {
+                clientId,
+                status: 'success',
+                paidAt: { gte: today }
+            }
+        });
+        // Convert kobo to naira (assuming amount is kobo)
+        const cashCollected = (paymentAggregation._sum.amount || 0) / 100;
+
         const messagesToday = await prisma.message.count({
             where: { clientId, timestamp: { gte: today } }
+        });
+
+        const unreadConversations = await prisma.conversation.count({
+            where: {
+                clientId,
+                unreadCount: { gt: 0 }
+            }
         });
 
         return {
@@ -72,12 +93,38 @@ export async function getDashboardStats(clientId: string) {
                 jobsToday,
                 appointmentsToday,
                 messagesToday,
-                revenueToday
+                unreadConversations,
+                revenueToday,
+                cashCollected
             }
         };
 
     } catch (error) {
         console.error('Error fetching dashboard stats:', error);
         return { success: false, error: 'Failed to fetch stats' };
+    }
+}
+
+export async function getRecentAlerts(clientId: string) {
+    try {
+        const user = await getCurrentUser();
+        if (!user) return { success: false, error: 'Unauthorized' };
+
+        const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000); // Last 24 hours
+
+        const alerts = await prisma.systemLog.findMany({
+            where: {
+                clientId,
+                level: { in: ['WARNING', 'ERROR', 'CRITICAL'] },
+                timestamp: { gte: cutoff }
+            },
+            orderBy: { timestamp: 'desc' },
+            take: 5,
+        });
+
+        return { success: true, data: alerts };
+    } catch (error) {
+        console.error('Error fetching alerts:', error);
+        return { success: false, error: 'Failed to fetch alerts' };
     }
 }

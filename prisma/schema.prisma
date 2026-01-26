@@ -14,7 +14,8 @@ model User {
   password  String?  // Hashed password for NextAuth.js
   name      String?
   role      UserRole @default(CLIENT)
-  clientId  String?  @unique
+  staffRole StaffRole @default(OWNER)
+  clientId  String?  // Removed @unique to allow multiple staff per client
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   branchId  String?
@@ -59,7 +60,9 @@ model Client {
   services             Service[]
   subscriptionPayments SubscriptionPayment[]
   timeSlots            TimeSlot[]
-  user                 User?
+  users                User[]
+  vehicles             Vehicle[]
+  products             Product[]
 
   @@index([businessType])
   @@index([status])
@@ -109,6 +112,7 @@ model Branding {
   secondaryColor String   @default("#1F2937")
   font           String   @default("Inter")
   tagline        String?
+  bankDetails    Json?    // { bankName, accountNumber, accountName }
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
   client         Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
@@ -119,11 +123,13 @@ model Service {
   clientId     String
   name         String
   description  String?
-  price        Decimal
+  price        Decimal?
   duration     Int?
   category     String?
   metadata     Json?
+  pricingRules Json?         // Array of { location: string, price: number }
   isActive     Boolean       @default(true)
+  commitmentFee Decimal?     // Optional deposit required
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   branchId     String?
@@ -213,19 +219,93 @@ model Job {
   priority      String       @default("MEDIUM")
   finalAmount   Int?
   paymentStatus String       @default("PENDING")
+  stockDeducted Boolean      @default(false)
+  
+  // Feedback
+  feedbackRequestSent Boolean @default(false)
+  feedbackRating      Int?    // 1-5
+  feedbackNotes       String?
+  
   branchId      String?
+  vehicleId     String?
   branch        Branch?      @relation(fields: [branchId], references: [id])
   client        Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
   customer      Customer?    @relation(fields: [customerId], references: [id])
+  vehicle       Vehicle?     @relation(fields: [vehicleId], references: [id])
   payments      JobPayment[]
+  items         JobItem[]
 
   @@index([clientId])
   @@index([branchId])
   @@index([customerId])
+  @@index([vehicleId])
   @@index([status])
   @@index([paymentStatus])
   @@index([createdAt])
   @@index([dueDate])
+  @@index([feedbackRequestSent]) // For cron performance
+}
+
+model JobItem {
+  id          String   @id @default(cuid())
+  jobId       String
+  productId   String?
+  description String
+  quantity    Int      @default(1)
+  unitPrice   Decimal
+  total       Decimal
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  job         Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  product     Product? @relation(fields: [productId], references: [id])
+
+  @@index([jobId])
+  @@index([productId])
+}
+
+model Product {
+  id                String    @id @default(cuid())
+  clientId          String
+  name              String
+  description       String?
+  sku               String?
+  price             Decimal
+  cost              Decimal   @default(0)
+  quantity          Int       @default(0)
+  lowStockThreshold Int       @default(5)
+  category          String?
+  isActive          Boolean   @default(true)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  client            Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  jobItems          JobItem[]
+
+  @@index([clientId])
+  @@index([sku])
+  @@index([category])
+}
+
+model Vehicle {
+  id          String   @id @default(cuid())
+  clientId    String
+  customerId  String
+  plateNumber String
+  make        String
+  model       String
+  year        Int?
+  color       String?
+  vin         String?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  customer    Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  jobs        Job[]
+
+  @@unique([clientId, plateNumber])
+  @@index([clientId])
+  @@index([customerId])
+  @@index([plateNumber])
 }
 
 model Customer {
@@ -246,6 +326,7 @@ model Customer {
   branch           Branch?       @relation(fields: [branchId], references: [id])
   client           Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
   jobs             Job[]
+  vehicles         Vehicle[]
 
   @@unique([clientId, phone])
   @@index([clientId])
@@ -448,6 +529,7 @@ enum ConversationPriority {
 
 enum AppointmentStatus {
   SCHEDULED
+  PENDING_PAYMENT
   CONFIRMED
   IN_PROGRESS
   COMPLETED
@@ -460,4 +542,9 @@ enum LogLevel {
   WARNING
   ERROR
   CRITICAL
+}
+enum StaffRole {
+  OWNER
+  MANAGER
+  AGENT
 }

@@ -16,7 +16,12 @@ export async function POST(request: Request, { params }: { params: { id: string 
 
         const job = await prisma.job.findUnique({
             where: { id: jobId },
-            include: { client: true, customer: true }
+            include: {
+                client: {
+                    include: { integrations: true }
+                },
+                customer: true
+            }
         });
 
         if (!job) {
@@ -32,6 +37,13 @@ export async function POST(request: Request, { params }: { params: { id: string 
         const amountInKobo = amountToPay * 100;
         const customerEmail = job.customer?.email || job.client.email;
 
+        // Use Client's Paystack Key if available, otherwise fall back to global (or fail if strict)
+        // ideally we should probably fail if client hasn't set it up, but for now we fallback or use theirs.
+        const clientPaystackKey = job.client.integrations?.paystackSecretKey;
+
+        // If we want to enforce client key:
+        // if (!clientPaystackKey) return NextResponse.json({ error: 'Payment gateway not configured for this business' }, { status: 400 });
+
         const paymentData = await initializePaystackPayment({
             email: customerEmail,
             amount: amountInKobo,
@@ -42,7 +54,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
                 type: 'JOB_PAYMENT',
                 customerId: job.customerId
             }
-        });
+        }, clientPaystackKey || undefined);
 
         await prisma.jobPayment.create({
             data: {

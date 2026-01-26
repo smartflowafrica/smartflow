@@ -9,6 +9,7 @@ import { InvoiceModal } from '@/components/client/InvoiceModal';
 import { AppointmentModal } from '@/components/client/AppointmentModal';
 import { useRealtimeJobs, useRealtimeMessages } from '@/hooks/useRealtime';
 import { updateJobStatus } from '@/app/actions/jobs';
+import { getClientJobs, getDashboardStats, getRecentAlerts } from '@/app/actions/dashboard';
 import { useClient } from '@/hooks/useClient';
 import { toast } from 'sonner';
 
@@ -18,7 +19,9 @@ export default function ClientDashboardPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [activeModal, setActiveModal] = useState<string | null>(null);
+
     const [stats, setStats] = useState<any>(null);
+    const [alerts, setAlerts] = useState<any[]>([]);
 
     const { jobs: realtimeJobs } = useRealtimeJobs();
     const { messages: realtimeMessages } = useRealtimeMessages();
@@ -27,7 +30,6 @@ export default function ClientDashboardPage() {
     const refreshStats = async () => {
         if (!client?.id) return;
         try {
-            const { getDashboardStats } = await import('@/app/actions/dashboard');
             const statsResult = await getDashboardStats(client.id);
             if (statsResult.success && statsResult.data) {
                 setStats(statsResult.data);
@@ -43,16 +45,23 @@ export default function ClientDashboardPage() {
 
             try {
                 // Load Jobs
-                const { getClientJobs, getDashboardStats } = await import('@/app/actions/dashboard');
                 const jobsResult = await getClientJobs(client.id);
                 if (jobsResult.success && jobsResult.data) {
                     setJobs(jobsResult.data);
+                } else {
+                    console.error('Failed to load jobs:', jobsResult.error);
                 }
 
                 // Load Stats
                 const statsResult = await getDashboardStats(client.id);
                 if (statsResult.success && statsResult.data) {
                     setStats(statsResult.data);
+                }
+
+                // Load Alerts
+                const alertsResult = await getRecentAlerts(client.id);
+                if (alertsResult.success && alertsResult.data) {
+                    setAlerts(alertsResult.data);
                 }
             } catch (error) {
                 console.error('Failed to load dashboard data', error);
@@ -107,6 +116,8 @@ export default function ClientDashboardPage() {
                 return stats.messagesToday;
             case 'revenue_today':
                 return stats.revenueToday;
+            case 'cash_collected':
+                return stats.cashCollected || 0;
 
             // Auto Mechanic
             case 'cars_in_shop':
@@ -212,10 +223,29 @@ export default function ClientDashboardPage() {
                         </div>
                         <div className="flex items-center gap-3">
                             <span className="text-sm text-slate-500">
-                                {realtimeMessages.length} new messages
+                                {stats?.unreadConversations || 0} unread active conversations
                             </span>
                         </div>
                     </div>
+
+                    {/* Alerts Section */}
+                    {alerts.length > 0 && (
+                        <div className="bg-red-50 border border-red-200 rounded-lg p-4 space-y-2">
+                            <h3 className="text-red-800 font-semibold flex items-center gap-2">
+                                ⚠️ Attention Needed
+                            </h3>
+                            <div className="space-y-2">
+                                {alerts.map(alert => (
+                                    <div key={alert.id} className="text-sm text-red-700 bg-white/50 p-2 rounded">
+                                        {alert.message}
+                                        <div className="text-xs text-red-500 mt-1">
+                                            {new Date(alert.timestamp).toLocaleTimeString()}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
 
                     {/* Metrics Grid */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -336,7 +366,8 @@ export default function ClientDashboardPage() {
                         terminology={config.terminology}
                     />
                 </div>
-            )}
-        </BusinessTypeAdapter>
+            )
+            }
+        </BusinessTypeAdapter >
     );
 }

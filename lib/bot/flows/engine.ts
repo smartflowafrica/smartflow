@@ -2,6 +2,7 @@ import prisma from '@/lib/prisma';
 import { ChatFlow, FlowState, FlowResponse } from './types';
 import { BookingFlow } from './booking';
 import { StatusFlow } from './status';
+import { InspectionFlow } from './inspection';
 
 export class FlowEngine {
     private flows: Map<string, ChatFlow> = new Map();
@@ -10,6 +11,7 @@ export class FlowEngine {
         // Register flows
         this.registerFlow(new BookingFlow());
         this.registerFlow(new StatusFlow());
+        this.registerFlow(new InspectionFlow());
     }
 
     private registerFlow(flow: ChatFlow) {
@@ -124,14 +126,25 @@ export class FlowEngine {
         });
     }
 
+    public async interruptFlow(clientId: string, customerPhone: string): Promise<boolean> {
+        const conversation = await prisma.conversation.findUnique({
+            where: { clientId_customerPhone: { clientId, customerPhone } },
+            select: { id: true, metadata: true }
+        });
+
+        if (!conversation) return false;
+
+        const meta = conversation.metadata as any;
+        if (meta?.flowState) {
+            console.log(`[FlowEngine] Interrupting flow for ${customerPhone}`);
+            await this.clearFlowState(conversation.id);
+            return true;
+        }
+        return false;
+    }
+
     private async clearFlowState(conversationId: string) {
         // We keep other metadata, just remove flowState
-        // Prisma Json update limitations: easier to read-modify-write or just set flowState: null
-        // But 'metadata' is replaced if we pass object.
-        // For now, let's assume metadata ONLY holds flowState. If not, we need to merge.
-        // To be safe: set flowState to null or undefined.
-
-        // Fetch current to merge isn't atomic but safe enough for low volume
         const current = await prisma.conversation.findUnique({ where: { id: conversationId }, select: { metadata: true } });
         const meta = (current?.metadata as Record<string, any>) || {};
         delete meta.flowState;

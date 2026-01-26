@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { getCustomers } from '@/app/actions/customers';
+
 interface NewJobModalProps {
     isOpen: boolean;
     onClose: () => void;
@@ -15,7 +17,11 @@ interface NewJobModalProps {
 export function NewJobModal({ isOpen, onClose, clientId, businessType, terminology }: NewJobModalProps) {
     const [isLoading, setIsLoading] = useState(false);
     const [services, setServices] = useState<any[]>([]);
+    const [customers, setCustomers] = useState<any[]>([]);
+    const [isExistingCustomer, setIsExistingCustomer] = useState(true); // Default to selecting existing
+
     const [formData, setFormData] = useState({
+        customerId: '', // Added ID for linking
         customerName: '',
         customerPhone: '',
         vehicleMake: '',
@@ -26,35 +32,123 @@ export function NewJobModal({ isOpen, onClose, clientId, businessType, terminolo
         price: '',
         notes: '',
     });
+    const [products, setProducts] = useState<any[]>([]);
+    const [selectedParts, setSelectedParts] = useState<any[]>([]);
 
-    // Fetch services on mount
+    // Fetch services, products, and customers on mount
     useEffect(() => {
         if (isOpen) {
-            fetch('/api/services?isActive=true')
-                .then(res => res.json())
-                .then(data => {
-                    if (data.services) setServices(data.services);
-                })
-                .catch(err => console.error('Failed to fetch services:', err));
+            Promise.all([
+                fetch('/api/services?isActive=true').then(res => res.json()),
+                fetch('/api/inventory').then(res => res.json()),
+                getCustomers(clientId)
+            ]).then(([servicesData, productsData, customersData]) => {
+                if (servicesData.services) setServices(servicesData.services);
+                if (productsData.products) setProducts(productsData.products);
+                if (customersData.success) setCustomers(customersData.data || []);
+            }).catch(err => console.error('Failed to fetch data:', err));
         }
     }, [isOpen]);
+
+    // Helper to format currency with commas
+    const formatNumber = (value: string) => {
+        const numericValue = value.replace(/[^0-9.]/g, '');
+        if (!numericValue) return '';
+        const parts = numericValue.split('.');
+        parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+        return parts.join('.');
+    };
+
+    // Helper to strip commas
+    const parseNumber = (value: string) => {
+        return value.replace(/,/g, '');
+    };
 
     if (!isOpen) return null;
 
     const handleServiceChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         const selectedId = e.target.value;
-        const service = services.find(s => s.name === selectedId); // Match by name as value
+        const service = services.find(s => s.name === selectedId);
 
-        // If we found a matching service, auto-fill price
         if (service) {
+            const total = calculateTotal(service.price, selectedParts);
             setFormData(prev => ({
                 ...prev,
                 serviceType: selectedId,
-                price: service.price.toString()
+                price: formatNumber(total.toString())
             }));
         } else {
             setFormData(prev => ({ ...prev, serviceType: selectedId }));
         }
+    };
+
+    const calculateTotal = (basePrice: string | number, parts: any[]) => {
+        // Parse basePrice in case it's a formatted string
+        const cleanBase = parseNumber(basePrice?.toString() || '0');
+        const labor = parseFloat(cleanBase) || 0;
+        const partsTotal = parts.reduce((sum, part) => sum + (part.price * part.quantity), 0);
+        return labor + partsTotal;
+    };
+
+    const addPart = (productId: string) => {
+        const product = products.find(p => p.id === productId);
+        if (!product) return;
+
+        const existing = selectedParts.find(p => p.productId === productId);
+        if (existing) return; // Prevent duplicates for now
+
+        const newParts = [...selectedParts, {
+            productId: product.id,
+            name: product.name,
+            price: product.price,
+            quantity: 1
+        }];
+
+        setSelectedParts(newParts);
+
+        // Update Total Price
+        // We need to fetch the current displayed price, parse it as "Labor + Old Parts", then add new part...
+        // Wait, "price" field is the TOTAL price. We don't store "Labor" separately in state.
+        // This makes updating tricky if the user edited the price manually.
+        // We will assume the visible price IS the total, and simply add the part cost to it.
+        const currentTotal = parseFloat(parseNumber(formData.price || '0'));
+        const newTotal = currentTotal + parseFloat(product.price);
+
+        setFormData(prev => ({
+            ...prev,
+            price: formatNumber(newTotal.toString())
+        }));
+    };
+
+    const removePart = (productId: string) => {
+        const part = selectedParts.find(p => p.productId === productId);
+        const newParts = selectedParts.filter(p => p.productId !== productId);
+        setSelectedParts(newParts);
+
+        if (part) {
+            const currentTotal = parseFloat(parseNumber(formData.price || '0'));
+            const deduction = part.price * part.quantity;
+            const newTotal = Math.max(0, currentTotal - deduction); // Prevent negative
+            setFormData(prev => ({ ...prev, price: formatNumber(newTotal.toString()) }));
+        }
+    };
+
+    const updatePartQuantity = (productId: string, qty: number) => {
+        if (qty < 1) return;
+
+        const oldPart = selectedParts.find(p => p.productId === productId);
+        if (!oldPart) return;
+
+        const newParts = selectedParts.map(p =>
+            p.productId === productId ? { ...p, quantity: qty } : p
+        );
+        setSelectedParts(newParts);
+
+        const diff = (qty - oldPart.quantity) * oldPart.price;
+        const current = parseFloat(parseNumber(formData.price || '0'));
+        const newTotal = current + diff;
+
+        setFormData(prev => ({ ...prev, price: formatNumber(newTotal.toString()) }));
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -64,19 +158,28 @@ export function NewJobModal({ isOpen, onClose, clientId, businessType, terminolo
         try {
             const { createJob } = await import('@/app/actions/jobs');
 
-            // Construct a descriptive title/description
             let description = formData.serviceType;
             if (formData.vehicleMake) {
                 description = `${formData.vehicleYear} ${formData.vehicleMake} ${formData.vehicleModel} - ${formData.serviceType}`;
             }
+
+            // Prepare items
+            const items = selectedParts.map(part => ({
+                productId: part.productId,
+                description: part.name,
+                quantity: part.quantity,
+                unitPrice: part.price,
+                total: part.price * part.quantity
+            }));
 
             const result = await createJob({
                 clientId,
                 customerName: formData.customerName,
                 customerPhone: formData.customerPhone,
                 description: description,
-                price: formData.price ? parseFloat(formData.price) : undefined,
-                // Map business-specific fields to metadata
+                // Parse formatted price back to number
+                price: formData.price ? parseFloat(parseNumber(formData.price)) : undefined,
+                items: items,
                 metadata: {
                     vehicle: {
                         make: formData.vehicleMake,
@@ -95,8 +198,6 @@ export function NewJobModal({ isOpen, onClose, clientId, businessType, terminolo
 
             toast.success(`${terminology.job} created successfully!`);
             onClose();
-
-            // Refresh page to show new job (or we could use a context/listener)
             window.location.reload();
         } catch (error: any) {
             console.error('Error creating job:', error);
@@ -122,35 +223,91 @@ export function NewJobModal({ isOpen, onClose, clientId, businessType, terminolo
                 <form onSubmit={handleSubmit} className="p-6 space-y-6">
                     {/* Customer Information */}
                     <div>
-                        <h3 className="text-lg font-semibold text-slate-900 mb-4">Customer Information</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-2">
-                                    Customer Name *
-                                </label>
-                                <input
-                                    type="text"
-                                    required
-                                    value={formData.customerName}
-                                    onChange={(e) => setFormData({ ...formData, customerName: e.target.value })}
-                                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    placeholder="John Doe"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-2">
-                                    Phone Number *
-                                </label>
-                                <input
-                                    type="tel"
-                                    required
-                                    value={formData.customerPhone}
-                                    onChange={(e) => setFormData({ ...formData, customerPhone: e.target.value })}
-                                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    placeholder="08012345678"
-                                />
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-lg font-semibold text-slate-900">Customer Information</h3>
+                            <div className="flex bg-slate-100 p-1 rounded-lg">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsExistingCustomer(true)}
+                                    className={`px-3 py-1 text-sm font-medium rounded-md transition-all ${isExistingCustomer ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'
+                                        }`}
+                                >
+                                    Registered
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setIsExistingCustomer(false);
+                                        setFormData(prev => ({ ...prev, customerId: '', customerName: '', customerPhone: '' }));
+                                    }}
+                                    className={`px-3 py-1 text-sm font-medium rounded-md transition-all ${!isExistingCustomer ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'
+                                        }`}
+                                >
+                                    New / Walk-in
+                                </button>
                             </div>
                         </div>
+
+                        {isExistingCustomer ? (
+                            <div className="mb-4">
+                                <label className="block text-sm font-medium text-slate-700 mb-2">
+                                    Select Customer
+                                </label>
+                                <select
+                                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                                    value={formData.customerId}
+                                    onChange={(e) => {
+                                        const c = customers.find(c => c.id === e.target.value);
+                                        if (c) {
+                                            setFormData(prev => ({
+                                                ...prev,
+                                                customerId: c.id,
+                                                customerName: c.name,
+                                                customerPhone: c.phone
+                                            }));
+                                        } else {
+                                            setFormData(prev => ({ ...prev, customerId: '', customerName: '', customerPhone: '' }));
+                                        }
+                                    }}
+                                >
+                                    <option value="">Search or Select Customer...</option>
+                                    {customers.map(c => (
+                                        <option key={c.id} value={c.id}>
+                                            {c.name} ({c.phone}) - {c.jobs?.[0]?.count || 0} jobs
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                                        Customer Name *
+                                    </label>
+                                    <input
+                                        type="text"
+                                        required
+                                        value={formData.customerName}
+                                        onChange={(e) => setFormData({ ...formData, customerName: e.target.value })}
+                                        className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        placeholder="John Doe"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                                        Phone Number *
+                                    </label>
+                                    <input
+                                        type="tel"
+                                        required
+                                        value={formData.customerPhone}
+                                        onChange={(e) => setFormData({ ...formData, customerPhone: e.target.value })}
+                                        className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        placeholder="08012345678"
+                                    />
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {/* Vehicle Information */}
@@ -248,14 +405,73 @@ export function NewJobModal({ isOpen, onClose, clientId, businessType, terminolo
                                     Price (₦)
                                 </label>
                                 <input
-                                    type="number"
+                                    type="text"
                                     value={formData.price}
-                                    onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                                    onChange={(e) => {
+                                        const formatted = formatNumber(e.target.value);
+                                        setFormData({ ...formData, price: formatted });
+                                    }}
                                     className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                                     placeholder="0.00"
                                 />
                             </div>
                         </div>
+
+                        {/* Parts & Materials */}
+                        <div>
+                            <h3 className="text-lg font-semibold text-slate-900 mb-4">Parts & Materials</h3>
+                            <div className="space-y-3 mb-4">
+                                {selectedParts.map(part => (
+                                    <div key={part.productId} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-200">
+                                        <div>
+                                            <div className="font-medium text-slate-800">{part.name}</div>
+                                            <div className="text-xs text-slate-500">₦{part.price.toLocaleString()} each</div>
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            <div className="flex items-center bg-white border border-slate-300 rounded-md">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => updatePartQuantity(part.productId, part.quantity - 1)}
+                                                    className="px-2 py-1 text-slate-600 hover:bg-slate-100"
+                                                >-</button>
+                                                <span className="px-2 text-sm font-medium">{part.quantity}</span>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => updatePartQuantity(part.productId, part.quantity + 1)}
+                                                    className="px-2 py-1 text-slate-600 hover:bg-slate-100"
+                                                >+</button>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => removePart(part.productId)}
+                                                className="text-red-500 hover:text-red-700"
+                                            >
+                                                <X size={18} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+
+                            <div className="flex gap-2">
+                                <select className="flex-1 px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    onChange={(e) => {
+                                        if (e.target.value) {
+                                            addPart(e.target.value);
+                                            e.target.value = ""; // Reset
+                                        }
+                                    }}
+                                >
+                                    <option value="">+ Add Part from Inventory...</option>
+                                    {products.map(p => (
+                                        <option key={p.id} value={p.id} disabled={selectedParts.some(sp => sp.productId === p.id)}>
+                                            {p.name} (Stock: {p.quantity}) - ₦{p.price.toLocaleString()}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+
                         <div>
                             <label className="block text-sm font-medium text-slate-700 mb-2">
                                 Notes

@@ -11,10 +11,13 @@ import {
     Calendar,
     Users,
     Briefcase,
-    Tag
+    Tag,
+    Package
 } from 'lucide-react'
 import { BranchSelector } from '@/components/layout/BranchSelector'
 import { SignOutButton } from '@/components/auth/SignOutButton'
+import { GlobalAlerts } from '@/components/layout/GlobalAlerts'
+import { InboxNavLink } from '@/components/layout/InboxNavLink'
 
 export const dynamic = 'force-dynamic'
 
@@ -47,20 +50,41 @@ export default async function ClientLayout({
         console.error('Failed to pre-fetch client profile', e);
     }
 
-    const displayName = initialClient?.ownerName || initialClient?.businessName || (userEmail ? userEmail.split('@')[0] : 'User');
-    const displaySubtitle = initialClient?.businessName || 'Client Account';
+    const staffRole = (session?.user as any)?.staffRole || 'OWNER';
+    const isOwnerOrManager = staffRole === 'OWNER' || staffRole === 'MANAGER';
+
+    // Fix: Use session name (Agent) instead of Client Owner name
+    const sessionName = session?.user?.name;
+    const displayName = sessionName || initialClient?.ownerName || (userEmail ? userEmail.split('@')[0] : 'User');
+
+    // Show Role instead of generic 'Client Account'
+    const displaySubtitle = staffRole === 'OWNER' ? (initialClient?.businessName || 'Business Owner') : `${staffRole} Account`;
 
     return (
         <ClientProvider initialClient={initialClient}>
+            <GlobalAlerts />
             <div className="flex h-screen bg-slate-50">
                 {/* Sidebar */}
                 <aside className="w-64 bg-white border-r border-slate-200 hidden md:flex flex-col">
                     <div className="p-6 border-b border-slate-100">
                         <Link href="/client" className="flex items-center gap-2 font-bold text-xl text-slate-900">
-                            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                                <span className="text-white">S</span>
-                            </div>
-                            SmartFlow
+                            {initialClient?.branding?.logoUrl ? (
+                                <div className="h-8 w-auto max-w-[180px]">
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                    <img
+                                        src={initialClient.branding.logoUrl}
+                                        alt={initialClient.businessName}
+                                        className="h-full object-contain"
+                                    />
+                                </div>
+                            ) : (
+                                <>
+                                    <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                                        <span className="text-white">S</span>
+                                    </div>
+                                    SmartFlow
+                                </>
+                            )}
                         </Link>
                     </div>
 
@@ -73,17 +97,24 @@ export default async function ClientLayout({
                         <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 px-4 mt-4">
                             Business
                         </div>
-                        <NavLink href="/client" icon={<LayoutDashboard size={20} />} label="Overview" />
+                        {isOwnerOrManager && (
+                            <NavLink href="/client" icon={<LayoutDashboard size={20} />} label="Overview" />
+                        )}
                         <NavLink href="/client/jobs" icon={<Briefcase size={20} />} label="Jobs" />
                         <NavLink href="/client/services" icon={<Tag size={20} />} label="Services" />
-                        <NavLink href="/client/conversations" icon={<MessageSquare size={20} />} label="Team Inbox" />
+                        <InboxNavLink />
                         <NavLink href="/client/appointments" icon={<Calendar size={20} />} label="Appointments" />
                         <NavLink href="/client/customers" icon={<Users size={20} />} label="Customers" />
+                        <NavLink href="/client/inventory" icon={<Package size={20} />} label="Inventory" />
 
-                        <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 px-4 mt-8">
-                            Account
-                        </div>
-                        <NavLink href="/client/settings" icon={<Settings size={20} />} label="Settings" />
+                        {isOwnerOrManager && (
+                            <>
+                                <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 px-4 mt-8">
+                                    Account
+                                </div>
+                                <NavLink href="/client/settings" icon={<Settings size={20} />} label="Settings" />
+                            </>
+                        )}
                     </nav>
 
                     <div className="p-4 border-t border-slate-100">

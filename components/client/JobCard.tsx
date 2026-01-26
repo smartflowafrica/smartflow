@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { useBusinessType } from '@/hooks/useBusinessType';
 import { toast } from 'sonner';
-import { CreditCard, FileText, CheckCircle2 } from 'lucide-react';
+import { CreditCard, FileText, CheckCircle2, Star } from 'lucide-react';
+import { RecordPaymentModal } from './RecordPaymentModal';
 
 interface JobCardProps {
     job: {
@@ -15,7 +16,9 @@ interface JobCardProps {
         price?: number;
         createdAt: string;
         updatedAt: string;
-        paymentStatus?: string; // Optional for now until safe
+        paymentStatus?: string;
+        feedbackRating?: number;
+        feedbackNotes?: string;
     };
     businessType: string;
     onStatusUpdate?: (jobId: string, newStatus: string) => Promise<void>;
@@ -26,6 +29,7 @@ interface JobCardProps {
 export function JobCard({ job, businessType, onStatusUpdate, onMarkReady, onNotifyCustomer }: JobCardProps) {
     const { config, getStatusColor, getStatusLabel } = useBusinessType(businessType);
     const [isUpdating, setIsUpdating] = useState(false);
+    const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
 
     if (!config) return null;
 
@@ -109,6 +113,22 @@ export function JobCard({ job, businessType, onStatusUpdate, onMarkReady, onNoti
                     </div>
                 )}
 
+                {/* Feedback Rating */}
+                {job.feedbackRating && (
+                    <div className="flex items-center justify-between text-sm">
+                        <span className="text-slate-500">Rating:</span>
+                        <div className="flex items-center gap-0.5">
+                            {Array.from({ length: 5 }).map((_, i) => (
+                                <Star
+                                    key={i}
+                                    size={14}
+                                    className={`${i < (job.feedbackRating || 0) ? 'fill-orange-400 text-orange-400' : 'text-slate-200'}`}
+                                />
+                            ))}
+                        </div>
+                    </div>
+                )}
+
                 {/* Status Selector */}
                 <div className="pt-2">
                     <label className="text-sm font-medium text-slate-700 mb-2 block">
@@ -141,20 +161,12 @@ export function JobCard({ job, businessType, onStatusUpdate, onMarkReady, onNoti
                     {job.paymentStatus !== 'PAID' ? (
                         <>
                             <button
-                                onClick={async (e) => {
+                                onClick={(e) => {
                                     e.stopPropagation();
-                                    try {
-                                        const res = await fetch(`/api/jobs/${job.id}/payment/initialize`, { method: 'POST' });
-                                        const data = await res.json();
-                                        if (data.paymentUrl) {
-                                            window.open(data.paymentUrl, '_blank');
-                                        } else {
-                                            toast.error('Failed to generate link');
-                                        }
-                                    } catch (err) { toast.error('Error generating link'); }
+                                    setIsPaymentModalOpen(true);
                                 }}
                                 className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white border border-slate-200 rounded-md text-slate-600 hover:text-blue-600 hover:border-blue-200 transition-colors shadow-sm"
-                                title="Pay Now"
+                                title="Record Payment"
                             >
                                 <CreditCard size={14} />
                                 Pay
@@ -211,6 +223,13 @@ export function JobCard({ job, businessType, onStatusUpdate, onMarkReady, onNoti
                     💬 Notify Customer
                 </button>
             </div>
+            <RecordPaymentModal
+                isOpen={isPaymentModalOpen}
+                onClose={() => setIsPaymentModalOpen(false)}
+                jobId={job.id}
+                totalAmount={job.price || 0}
+                customerName={job.customerName}
+            />
         </div>
     );
 }

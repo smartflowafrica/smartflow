@@ -22,14 +22,14 @@ export const initializePaystackPayment = async (data: {
     reference?: string;
     callback_url?: string;
     metadata?: any;
-}) => {
-    const secretKey = process.env.PAYSTACK_SECRET_KEY;
-    if (!secretKey) throw new Error('Paystack secret key not configured');
+}, secretKey?: string) => {
+    const key = secretKey || process.env.PAYSTACK_SECRET_KEY;
+    if (!key) throw new Error('Paystack secret key not configured');
 
     const res = await fetch('https://api.paystack.co/transaction/initialize', {
         method: 'POST',
         headers: {
-            Authorization: `Bearer ${secretKey}`,
+            Authorization: `Bearer ${key}`,
             'Content-Type': 'application/json',
         },
         body: JSON.stringify(data),

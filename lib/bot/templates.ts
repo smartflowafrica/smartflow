@@ -1,14 +1,56 @@
+// Professional Assistant Persona Templates
 export const templates = {
-    greeting: "Hello! Welcome to {businessName}. How can I help you today?",
-    hours: "We're open:\n{hours}\nWe're currently {openStatus}.",
-    menu: "Here's our menu:\n{menuItems}\nReply with item name to order.",
-    price: "{serviceName} is ₦{price}. Would you like to book it?",
-    booking: "To book {service}, please provide:\n1. Preferred date\n2. Preferred time\n3. Your name",
-    location: "We're located at: {address}\n{mapLink}",
-    delivery: "Delivery available to {areas} for ₦{fee}. Send your address.",
-    payment: "Total: ₦{amount}\nPay here: {paymentLink}",
-    status: "Please provide your Job ID or Order Number to check the status.",
-    unknown: "I'm not sure I understood that. Could you please rephrase? You can ask for our 'menu', 'hours', 'location', or 'payment details'."
+    greeting: [
+        "Hello! Welcome to {businessName}. How can I assist you today?",
+        "Hi there! Thanks for reaching out to {businessName}. What can we do for you?",
+        "Good day! You've reached {businessName}. I'm here to help with bookings and inquiries."
+    ],
+    hours: [
+        "Here are our business hours:\n{hours}\nWe are currently {openStatus}.",
+        "We are open at these times:\n{hours}\nStatus: {openStatus}."
+    ],
+    menu: [
+        "Take a look at our services:\n{menuItems}\n\nReply with the **Service Name** or **Number** (e.g., '1') to book it!",
+        "Here is what we offer:\n{menuItems}\n\nLet me know if you'd like to schedule any of these (you can just reply with the number!)."
+    ],
+    price: [
+        "The price for **{serviceName}** is **₦{price}**. Shall I book that for you?",
+        "**{serviceName}** costs **₦{price}**. Would you like to proceed with a booking?"
+    ],
+    booking: [
+        "Great choice. To book **{service}**, I just need a few details:\n1. Preferred date\n2. Preferred time\n3. Your name",
+        "I can help you schedule **{service}**. Please tell me:\n- When would you like to come in? (Date & Time)\n- Your full name"
+    ],
+    location: [
+        "You can find us at:\n{address}\n{mapLink}",
+        "Our office is located at:\n{address}"
+    ],
+    delivery: [
+        "We deliver to {areas} for a fee of ₦{fee}. Please send your delivery address.",
+        "Delivery is available! The cost is ₦{fee} to {areas}. Where should we send it?"
+    ],
+    payment: [
+        "The total is ₦{amount}. You can pay securely here: {paymentLink}",
+        "Please complete your payment of ₦{amount} using this link: {paymentLink}"
+    ],
+    status: [
+        "I can check that for you. Please send me your Job ID or Order Number.",
+        "To check your status, please provide your reference number."
+    ],
+    unknown: [
+        "I didn't quite catch that. You can ask for our **menu**, **hours**, or **location**. How can I help?",
+        "I'm not sure I understood. I can help you **book an appointment** or **check prices**. What do you need?",
+        "Sorry, I missed that. Are you looking to see our **services** or **hours**?"
+    ]
+};
+
+export const pickRandom = (template: string[] | string | undefined): string => {
+    if (!template) return "";
+    if (Array.isArray(template)) {
+        const index = Math.floor(Math.random() * template.length);
+        return template[index] || "";
+    }
+    return template;
 };
 
 export function formatMenu(services: any[]): string {

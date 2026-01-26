@@ -21,6 +21,14 @@ export interface Client {
         tagline?: string;
     };
     metadata?: any;
+    integrations?: {
+        whatsappNumber?: string;
+        whatsappStatus?: string;
+        whatsappInstanceId?: string;
+        paystackPublicKey?: string;
+        paystackSecretKey?: string;
+        paystackStatus?: string;
+    };
 }
 
 interface ClientContextType {

@@ -25,13 +25,29 @@ export async function getConversations(clientId: string) {
 
 export async function getConversationMessages(clientId: string, customerPhone: string) {
     try {
-        const messages = await prisma.message.findMany({
-            where: {
-                clientId,
-                customerPhone
-            },
-            orderBy: { timestamp: 'asc' }
-        });
+        // Parallel fetch messages and reset unread count
+        const [messages] = await Promise.all([
+            prisma.message.findMany({
+                where: {
+                    clientId,
+                    customerPhone
+                },
+                orderBy: { timestamp: 'asc' }
+            }),
+            prisma.conversation.update({
+                where: {
+                    clientId_customerPhone: {
+                        clientId,
+                        customerPhone
+                    }
+                },
+                data: {
+                    unreadCount: 0,
+                    // Optionally update status if needed, but usually status is handled by reply/resolve
+                }
+            })
+        ]);
+
         return { success: true, data: messages };
     } catch (error) {
         console.error('Get Messages Error:', error);

@@ -3,118 +3,201 @@
 import { useState, useEffect } from 'react';
 import { useClient } from '@/hooks/useClient';
 import { toast } from 'sonner';
-import { Plus, Trash2, Users, UserPlus } from 'lucide-react';
-import { updateClientTeam } from '@/app/actions/client-settings';
+import { Plus, Trash2, Users, Shield, Mail, Lock, User } from 'lucide-react';
+import { createStaffUser, deleteStaffUser, updateClientTeam } from '@/app/actions/client-settings';
+import { getTeamMembers } from '@/app/actions/client';
 
 export function TeamSettings() {
     const { client } = useClient();
-    // Initialize with existing metadata team or empty array
-    // We assume client.metadata.whatsappConfig.teamMembers exists from the previous steps
-    const [teamMembers, setTeamMembers] = useState<string[]>(
-        (client?.metadata as any)?.whatsappConfig?.teamMembers || []
-    );
-    const [newMemberName, setNewMemberName] = useState('');
+    const [teamMembers, setTeamMembers] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    // Add Modal State
+    const [isAddOpen, setIsAddOpen] = useState(false);
+    const [formData, setFormData] = useState({ name: '', email: '', password: '', role: 'AGENT' });
     const [isSaving, setIsSaving] = useState(false);
 
-    const handleAdd = () => {
-        if (!newMemberName.trim()) return;
-        setTeamMembers([...teamMembers, newMemberName.trim()]);
-        setNewMemberName('');
-    };
+    useEffect(() => {
+        loadTeam();
+    }, [client]);
 
-    const handleRemove = (index: number) => {
-        setTeamMembers(teamMembers.filter((_, i) => i !== index));
-    };
-
-    const handleSave = async () => {
+    const loadTeam = async () => {
         if (!client) return;
+        setLoading(true);
+        try {
+            const res = await getTeamMembers(client.id);
+            if (res.success && res.data) {
+                setTeamMembers(res.data);
+            }
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleCreate = async () => {
+        if (!client || !formData.email || !formData.password) return;
         setIsSaving(true);
         try {
-            // We are only updating the metadata part for now
-            const result = await updateClientTeam(client.id, teamMembers);
-            if (result.success) {
-                toast.success('Team list updated');
+            const res = await createStaffUser(client.id, {
+                name: formData.name,
+                email: formData.email,
+                password: formData.password,
+                role: formData.role as any
+            });
+
+            if (res.success) {
+                toast.success('Staff member invited successfully');
+                setIsAddOpen(false);
+                setFormData({ name: '', email: '', password: '', role: 'AGENT' });
+                loadTeam();
             } else {
-                toast.error('Failed to update team');
+                toast.error(res.error || 'Failed to create user');
             }
-        } catch (error) {
-            toast.error('An error occurred');
+        } catch (e) {
+            toast.error('Error creating user');
         } finally {
             setIsSaving(false);
         }
     };
 
+    const handleDelete = async (id: string, type: string) => {
+        if (!confirm('Are you sure you want to remove this staff member?')) return;
+
+        try {
+            if (type === 'USER') {
+                const res = await deleteStaffUser(id);
+                if (res.success) {
+                    toast.success('User removed');
+                    loadTeam();
+                } else {
+                    toast.error(res.error || 'Failed to remove');
+                }
+            } else {
+                // Handle legacy manual removal if needed (ignoring for now as we move to real users)
+                toast.info('Please verify legacy staff via Database');
+            }
+        } catch (e) {
+            toast.error('Removal failed');
+        }
+    };
+
     return (
         <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
-            <h2 className="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
-                <Users className="text-blue-600" size={20} />
-                Staff Management
-            </h2>
-            <p className="text-sm text-slate-500 mb-6">
-                Manage the list of staff members who handle customer inquiries.
-                These names will appear in your Team Inbox.
-            </p>
-
-            <div className="max-w-md space-y-4">
-                <div className="flex gap-2">
-                    <input
-                        type="text"
-                        value={newMemberName}
-                        onChange={(e) => setNewMemberName(e.target.value)}
-                        placeholder="Enter staff name (e.g. Mike)"
-                        className="flex-1 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                        onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
-                    />
-                    <button
-                        onClick={handleAdd}
-                        disabled={!newMemberName.trim()}
-                        className="bg-slate-100 text-slate-700 hover:bg-slate-200 px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-50"
-                    >
-                        <Plus size={20} />
-                    </button>
+            <div className="flex justify-between items-start mb-6">
+                <div>
+                    <h2 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
+                        <Users className="text-blue-600" size={20} />
+                        Staff & Permissions
+                    </h2>
+                    <p className="text-sm text-slate-500 mt-1">
+                        Create accounts for your team members.
+                    </p>
                 </div>
-
-                <div className="space-y-2">
-                    {teamMembers.map((member, idx) => (
-                        <div key={idx} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100 group">
-                            <span className="font-medium text-slate-700">{member}</span>
-                            <button
-                                onClick={() => handleRemove(idx)}
-                                className="text-slate-400 hover:text-red-600 transition-colors opacity-0 group-hover:opacity-100"
-                            >
-                                <Trash2 size={18} />
-                            </button>
-                        </div>
-                    ))}
-                    {teamMembers.length === 0 && (
-                        <p className="text-center text-sm text-slate-400 py-4 italic">No staff members added yet.</p>
-                    )}
-                </div>
-
-                <div className="pt-4 border-t border-slate-100">
-                    <button
-                        onClick={handleSave}
-                        disabled={isSaving}
-                        className="w-full bg-blue-600 text-white py-2.5 rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-70 flex items-center justify-center gap-2"
-                    >
-                        {isSaving ? 'Saving...' : 'Save Changes'}
-                    </button>
-                </div>
+                <button
+                    onClick={() => setIsAddOpen(true)}
+                    className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+                >
+                    <Plus size={18} /> Add Member
+                </button>
             </div>
 
-            <div className="mt-8 p-4 bg-blue-50 rounded-xl border border-blue-100">
-                <div className="flex items-start gap-3">
-                    <div className="p-2 bg-blue-100 rounded-lg text-blue-600">
-                        <UserPlus size={20} />
+            {/* Add Member Form (Inline or Modal - Inline for simplicity here if open) */}
+            {isAddOpen && (
+                <div className="mb-6 p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label className="text-xs font-semibold text-slate-600 uppercase mb-1 block">Name</label>
+                            <input
+                                type="text"
+                                className="w-full p-2 border border-slate-300 rounded-lg text-sm"
+                                placeholder="John Doe"
+                                value={formData.name}
+                                onChange={e => setFormData({ ...formData, name: e.target.value })}
+                            />
+                        </div>
+                        <div>
+                            <label className="text-xs font-semibold text-slate-600 uppercase mb-1 block">Email</label>
+                            <input
+                                type="email"
+                                className="w-full p-2 border border-slate-300 rounded-lg text-sm"
+                                placeholder="john@company.com"
+                                value={formData.email}
+                                onChange={e => setFormData({ ...formData, email: e.target.value })}
+                            />
+                        </div>
+                        <div>
+                            <label className="text-xs font-semibold text-slate-600 uppercase mb-1 block">Password</label>
+                            <input
+                                type="password"
+                                className="w-full p-2 border border-slate-300 rounded-lg text-sm"
+                                placeholder="Initial password"
+                                value={formData.password}
+                                onChange={e => setFormData({ ...formData, password: e.target.value })}
+                            />
+                        </div>
+                        <div>
+                            <label className="text-xs font-semibold text-slate-600 uppercase mb-1 block">Role</label>
+                            <select
+                                className="w-full p-2 border border-slate-300 rounded-lg text-sm"
+                                value={formData.role}
+                                onChange={e => setFormData({ ...formData, role: e.target.value })}
+                            >
+                                <option value="AGENT">Agent (Chat & Calendar)</option>
+                                <option value="MANAGER">Manager (Full Access)</option>
+                            </select>
+                        </div>
                     </div>
-                    <div>
-                        <h3 className="font-semibold text-blue-900 text-sm">Need separate logins?</h3>
-                        <p className="text-xs text-blue-700 mt-1">
-                            Currently, these staff members do not have login access.
-                            Multi-user login access is coming soon to the Enterprise plan.
-                        </p>
+                    <div className="flex justify-end gap-2 pt-2">
+                        <button
+                            onClick={() => setIsAddOpen(false)}
+                            className="px-4 py-2 text-slate-500 hover:bg-slate-200 rounded-lg text-sm"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={handleCreate}
+                            disabled={isSaving}
+                            className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 disabled:opacity-50"
+                        >
+                            {isSaving ? 'Inviting...' : 'Send Invitation'}
+                        </button>
                     </div>
                 </div>
+            )}
+
+            <div className="space-y-3">
+                {loading ? (
+                    <div className="text-center py-4 text-slate-400">Loading team...</div>
+                ) : (
+                    teamMembers.map((member) => (
+                        <div key={member.id} className="flex items-center justify-between p-4 bg-white border border-slate-100 rounded-lg hover:border-blue-100 transition shadow-sm">
+                            <div className="flex items-center gap-4">
+                                <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 font-bold">
+                                    {member.name.charAt(0).toUpperCase()}
+                                </div>
+                                <div>
+                                    <h4 className="font-semibold text-slate-900">{member.name} {member.displayRole === 'OWNER' && <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full ml-2">Owner</span>}</h4>
+                                    <div className="flex items-center gap-4 text-xs text-slate-500 mt-0.5">
+                                        <div className="flex items-center gap-1"><Mail size={12} /> {member.email || 'No email'}</div>
+                                        <div className="flex items-center gap-1"><Shield size={12} /> {member.displayRole}</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {member.displayRole !== 'OWNER' && (
+                                <button
+                                    onClick={() => handleDelete(member.id, member.type)}
+                                    className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                                    title="Remove User"
+                                >
+                                    <Trash2 size={18} />
+                                </button>
+                            )}
+                        </div>
+                    ))
+                )}
             </div>
         </div>
     );

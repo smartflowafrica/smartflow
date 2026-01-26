@@ -2,13 +2,15 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useClient } from '@/hooks/useClient';
-import { Plus, Search, Filter, Phone, Mail, MoreHorizontal, Edit, Trash2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Plus, Search, Filter, Phone, Mail, MoreHorizontal, Edit, Trash2, User } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { AddCustomerModal } from '@/components/client/AddCustomerModal';
 
 export default function CustomersPage() {
     const { client } = useClient();
+    const router = useRouter(); // Initialize router here
     const [customers, setCustomers] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
@@ -207,6 +209,12 @@ export default function CustomersPage() {
                                                     ref={dropdownRef}
                                                     className="absolute right-8 top-12 w-48 bg-white rounded-lg shadow-xl border border-slate-100 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2"
                                                 >
+                                                    <button
+                                                        onClick={() => router.push(`/client/customers/${customer.id}`)}
+                                                        className="w-full px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                                                    >
+                                                        <User size={16} /> View Profile
+                                                    </button>
                                                     <button
                                                         onClick={() => {
                                                             setEditingCustomer(customer);

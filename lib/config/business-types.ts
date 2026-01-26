@@ -119,6 +119,7 @@ export const BUSINESS_TYPES: Record<string, BusinessTypeConfig> = {
             { id: 'cars_in_shop', label: 'Cars in Shop', icon: '🚗', format: 'number' },
             { id: 'ready_for_pickup', label: 'Ready for Pickup', icon: '✅', format: 'number' },
             { id: 'revenue_today', label: 'Revenue Today', icon: '💰', format: 'currency' },
+            { id: 'cash_collected', label: 'Cash Collected', icon: '💵', format: 'currency' },
         ],
     },
 
@@ -174,6 +175,7 @@ export const BUSINESS_TYPES: Record<string, BusinessTypeConfig> = {
             { id: 'orders_today', label: 'Orders Today', icon: '🍽️', format: 'number' },
             { id: 'preparing', label: 'Preparing Now', icon: '👨‍🍳', format: 'number' },
             { id: 'revenue_today', label: 'Revenue Today', icon: '💰', format: 'currency' },
+            { id: 'cash_collected', label: 'Cash Collected', icon: '💵', format: 'currency' },
         ],
     },
 
@@ -228,6 +230,7 @@ export const BUSINESS_TYPES: Record<string, BusinessTypeConfig> = {
             { id: 'appointments_today', label: 'Appointments Today', icon: '📅', format: 'number' },
             { id: 'in_progress', label: 'In Progress', icon: '💇', format: 'number' },
             { id: 'revenue_today', label: 'Revenue Today', icon: '💰', format: 'currency' },
+            { id: 'cash_collected', label: 'Cash Collected', icon: '💵', format: 'currency' },
         ],
     },
 
@@ -280,6 +283,7 @@ export const BUSINESS_TYPES: Record<string, BusinessTypeConfig> = {
             { id: 'check_ins', label: 'Check-ins Today', icon: '🔑', format: 'number' },
             { id: 'requests', label: 'Open Requests', icon: '🛎️', format: 'number' },
             { id: 'revenue_today', label: 'Revenue Today', icon: '💰', format: 'currency' },
+            { id: 'cash_collected', label: 'Cash Collected', icon: '💵', format: 'currency' },
         ],
     },
 
@@ -329,6 +333,7 @@ export const BUSINESS_TYPES: Record<string, BusinessTypeConfig> = {
             { id: 'orders_today', label: 'Orders Today', icon: '📦', format: 'number' },
             { id: 'pending_delivery', label: 'Pending Delivery', icon: '🚚', format: 'number' },
             { id: 'revenue_today', label: 'Revenue Today', icon: '💰', format: 'currency' },
+            { id: 'cash_collected', label: 'Cash Collected', icon: '💵', format: 'currency' },
         ],
     },
 
@@ -382,6 +387,7 @@ export const BUSINESS_TYPES: Record<string, BusinessTypeConfig> = {
             { id: 'appointments_today', label: 'Appointments Today', icon: '📅', format: 'number' },
             { id: 'waiting_patients', label: 'Waiting Patients', icon: '⏳', format: 'number' },
             { id: 'revenue_today', label: 'Revenue Today', icon: '💰', format: 'currency' },
+            { id: 'cash_collected', label: 'Cash Collected', icon: '💵', format: 'currency' },
         ],
     },
 };

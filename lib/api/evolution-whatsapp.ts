@@ -15,10 +15,11 @@ export class WhatsAppService {
     private apiKey: string;
     private instanceName: string;
 
-    constructor() {
+    constructor(instanceName?: string) {
         this.apiUrl = process.env.SERVER_URL || 'http://localhost:8081';
         this.apiKey = process.env.AUTHENTICATION_API_KEY || '';
-        this.instanceName = process.env.EVOLUTION_INSTANCE_NAME || 'SmartFlowMain';
+        // Use provided instance name, or fallback to default Env
+        this.instanceName = instanceName || process.env.EVOLUTION_INSTANCE_NAME || 'SmartFlowMain';
 
         // Initialize Redis for Rate Limiting
         this.redis = new Redis(process.env.CACHE_REDIS_URI || 'redis://localhost:6379/1');
@@ -36,6 +37,81 @@ export class WhatsAppService {
         }
         return clean;
     }
+
+    // --- INSTANCE MANAGEMENT FOR MULTI-TENANCY ---
+
+    /**
+     * Creates a new Evolution Instance for a client
+     */
+    public async createInstance(instanceName: string, integrationId?: string): Promise<any> {
+        // Evolution v1.8 /instance/create
+        const response = await fetch(`${this.apiUrl}/instance/create`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'apikey': this.apiKey
+            },
+            body: JSON.stringify({
+                instanceName: instanceName,
+                qrcode: true, // We want QR code generation
+                integration: 'WHATSAPP-BAILEYS'
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to create instance: ${await response.text()}`);
+        }
+
+        return await response.json();
+    }
+
+    /**
+     * Fetches the connection status and QR code if strictly needed
+     */
+    public async connectInstance(): Promise<{ base64?: string, status: string }> {
+        // Evolution v1.8 /instance/connect/{instance}
+        const response = await fetch(`${this.apiUrl}/instance/connect/${this.instanceName}`, {
+            method: 'GET',
+            headers: {
+                'apikey': this.apiKey
+            }
+        });
+
+        if (!response.ok) {
+            return { status: 'ERROR' };
+        }
+
+        const data = await response.json();
+        // v1.8 structure usually returns { base64: "...", code: "..." } if QR is needed
+        // OR checks the logs/socket. 
+        // For fetching the QR specifically if it wasn't returned on create:
+        return data;
+    }
+
+    /**
+     * Gets instance connection state
+     */
+    public async getInstanceStatus(): Promise<any> {
+        const response = await fetch(`${this.apiUrl}/instance/connectionState/${this.instanceName}`, {
+            method: 'GET',
+            headers: { 'apikey': this.apiKey }
+        });
+        if (!response.ok) return null;
+        return await response.json();
+    }
+
+    /**
+     * Deletes an instance (Logout/Reset)
+     */
+    public async deleteInstance(): Promise<boolean> {
+        const response = await fetch(`${this.apiUrl}/instance/delete/${this.instanceName}`, {
+            method: 'DELETE',
+            headers: { 'apikey': this.apiKey }
+        });
+        return response.ok;
+    }
+
+    // --- MESSAGING ---
 
     /**
      * Sends a WhatsApp message via Evolution API with Safety Layers
@@ -113,7 +189,7 @@ export class WhatsAppService {
      */
     private async checkRateLimit(recipient: string): Promise<void> {
         const key = `ratelimit:${recipient}`;
-        const limit = 20;
+        const limit = 100; // Increased limit for testing
         const window = 3600; // 1 hour
 
         const current = await this.redis.incr(key);
@@ -211,7 +287,10 @@ export class WhatsAppService {
             // Let's assume 'to' is our configured number
             const myNumber = process.env.TWILIO_WHATSAPP_NUMBER || 'self';
 
-            console.log(`[Evolution Parsed] From: ${cleanFrom} | Msg: ${messageBody}`);
+            // Extract instance name from body for Multi-Tenancy routing!
+            const instanceId = body.instance;
+
+            console.log(`[Evolution Parsed] Instance: ${instanceId} | From: ${cleanFrom} | Msg: ${messageBody}`);
 
             return {
                 from: '+' + cleanFrom, // Normalize to +Format for our DB consistency
@@ -219,6 +298,7 @@ export class WhatsAppService {
                 message: messageBody,
                 name: profileName,
                 sid: messageSid,
+                instanceId: instanceId, // Return this for routing
                 raw: body
             };
 
@@ -231,7 +311,7 @@ export class WhatsAppService {
     /**
      * Sends Media Message (Image) via Evolution API
      */
-    public async sendMedia(to: string, mediaUrl: string, caption?: string, clientId?: string): Promise<any> {
+    public async sendMedia(to: string, mediaUrl: string, caption?: string, clientId?: string, mediaType: 'image' | 'video' | 'document' = 'image'): Promise<any> {
         const formattedTo = this.formatPhone(to);
         await this.checkRateLimit(formattedTo);
 
@@ -245,17 +325,19 @@ export class WhatsAppService {
                 body: JSON.stringify({
                     number: formattedTo,
                     mediaMessage: {
-                        mediatype: 'image',
+                        mediatype: mediaType, // Dynamic type
                         media: mediaUrl,
-                        caption: caption || ''
+                        caption: caption || '',
+                        fileName: mediaType === 'document' ? 'invoice.pdf' : undefined // Optional filename for docs
                     },
                     options: { delay: 1200 }
                 })
             });
 
             if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || 'Evolution Media API Error');
+                const errorText = await response.text();
+                console.error('Evolution Media API Error Response:', errorText);
+                throw new Error(`Evolution Media API Error: ${errorText}`);
             }
 
             const data = await response.json();

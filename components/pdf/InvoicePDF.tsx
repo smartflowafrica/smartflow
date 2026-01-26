@@ -1,5 +1,5 @@
 import React from 'react';
-import { Page, Text, View, Document, StyleSheet, Font } from '@react-pdf/renderer';
+import { Page, Text, View, Document, StyleSheet, Font, Image } from '@react-pdf/renderer';
 
 // Create styles
 const styles = StyleSheet.create({
@@ -115,66 +115,127 @@ interface InvoicePDFProps {
         description: string;
         amount: number;
         paymentLink: string;
+        logoUrl?: string;
+        bankDetails?: {
+            bankName?: string;
+            accountNumber?: string;
+            accountName?: string;
+        };
+        isReceipt?: boolean;
+        status?: string;
+        paymentMethod?: string;
     };
 }
 
-const InvoicePDF = ({ invoiceData }: InvoicePDFProps) => (
-    <Document>
-        <Page size="A4" style={styles.page}>
-            {/* Header */}
-            <View style={styles.header}>
-                <View style={styles.headerLeft}>
-                    <Text style={styles.title}>{invoiceData.businessName}</Text>
-                    <Text style={styles.subtitle}>Invoice #{invoiceData.id.slice(0, 8).toUpperCase()}</Text>
+const InvoicePDF = ({ invoiceData }: InvoicePDFProps) => {
+    const hasBankDetails = invoiceData.bankDetails?.bankName && invoiceData.bankDetails?.accountNumber;
+    const isPaid = invoiceData.isReceipt || invoiceData.status === 'PAID';
+
+    return (
+        <Document>
+            <Page size="A4" style={styles.page}>
+                {/* PAID Stamp */}
+                {isPaid && (
+                    <View style={{
+                        position: 'absolute',
+                        top: 200,
+                        left: '30%',
+                        transform: 'rotate(-25deg)',
+                        borderWidth: 5,
+                        borderColor: '#22c55e', // Green
+                        padding: 10,
+                        opacity: 0.3,
+                        zIndex: -1
+                    }}>
+                        <Text style={{
+                            color: '#22c55e',
+                            fontSize: 80,
+                            fontWeight: 'bold',
+                            textTransform: 'uppercase'
+                        }}>{invoiceData.paymentMethod ? 'PAID' : 'PAID'}</Text>
+                        {/* Could put method here but might be too long. Sticking to PAID */}
+                    </View>
+                )}
+
+                {/* Header */}
+                <View style={styles.header}>
+                    <View style={styles.headerLeft}>
+                        {invoiceData.logoUrl ? (
+                            <Image
+                                src={invoiceData.logoUrl}
+                                style={{ width: 100, marginBottom: 10, objectFit: 'contain' }}
+                            />
+                        ) : (
+                            <Text style={styles.title}>{invoiceData.businessName}</Text>
+                        )}
+
+                        <Text style={styles.title}>
+                            {isPaid ? `RECEIPT - ${invoiceData.paymentMethod || 'PAID'}` : 'INVOICE'}
+                        </Text>
+                        <Text style={styles.subtitle}>#{invoiceData.id.slice(0, 8).toUpperCase()}</Text>
+                    </View>
+                    <View style={styles.headerRight}>
+                        <Text style={{ fontSize: 10 }}>Date: {invoiceData.date}</Text>
+                        {/* Render name here too if logo is used, for clarity? Or keep minimal. Keeping minimal for now. */}
+                        {invoiceData.logoUrl && <Text style={{ fontSize: 12, fontWeight: 'bold' }}>{invoiceData.businessName}</Text>}
+                    </View>
                 </View>
-                <View style={styles.headerRight}>
-                    <Text style={{ fontSize: 10 }}>Date: {invoiceData.date}</Text>
+
+                {/* Customer Info */}
+                <View style={{ marginBottom: 20 }}>
+                    <Text style={{ fontSize: 12, color: '#999', marginBottom: 4 }}>Bill To:</Text>
+                    <Text style={{ fontSize: 14 }}>{invoiceData.customerName}</Text>
+                    <Text style={{ fontSize: 10 }}>{invoiceData.customerEmail}</Text>
                 </View>
-            </View>
 
-            {/* Customer Info */}
-            <View style={{ marginBottom: 20 }}>
-                <Text style={{ fontSize: 12, color: '#999', marginBottom: 4 }}>Bill To:</Text>
-                <Text style={{ fontSize: 14 }}>{invoiceData.customerName}</Text>
-                <Text style={{ fontSize: 10 }}>{invoiceData.customerEmail}</Text>
-            </View>
+                {/* Table Header */}
+                <View style={styles.headerRow}>
+                    <Text style={[styles.colDescription, { fontWeight: 'bold' }]}>Description</Text>
+                    <Text style={[styles.colAmount, { fontWeight: 'bold' }]}>Amount</Text>
+                </View>
 
-            {/* Table Header */}
-            <View style={styles.headerRow}>
-                <Text style={[styles.colDescription, { fontWeight: 'bold' }]}>Description</Text>
-                <Text style={[styles.colAmount, { fontWeight: 'bold' }]}>Amount</Text>
-            </View>
+                {/* Table Content */}
+                <View style={styles.row}>
+                    <Text style={styles.colDescription}>{invoiceData.description}</Text>
+                    <Text style={styles.colAmount}>NGN {invoiceData.amount.toLocaleString()}</Text>
+                </View>
 
-            {/* Table Content */}
-            <View style={styles.row}>
-                <Text style={styles.colDescription}>{invoiceData.description}</Text>
-                <Text style={styles.colAmount}>NGN {invoiceData.amount.toLocaleString()}</Text>
-            </View>
+                {/* Total */}
+                <View style={styles.totalRow}>
+                    <Text style={styles.totalLabel}>Total Due:</Text>
+                    <Text style={styles.totalAmount}>NGN {invoiceData.amount.toLocaleString()}</Text>
+                </View>
 
-            {/* Total */}
-            <View style={styles.totalRow}>
-                <Text style={styles.totalLabel}>Total Due:</Text>
-                <Text style={styles.totalAmount}>NGN {invoiceData.amount.toLocaleString()}</Text>
-            </View>
+                {/* Payment Info */}
+                <View style={styles.paymentInfo}>
+                    <Text style={styles.paymentTitle}>Payment Instructions</Text>
 
-            {/* Payment Info */}
-            <View style={styles.paymentInfo}>
-                <Text style={styles.paymentTitle}>Payment Instructions</Text>
-                <Text style={styles.paymentText}>Please make payment using the link below:</Text>
-                <Text style={[styles.paymentText, { color: 'blue', textDecoration: 'underline' }]}>
-                    {invoiceData.paymentLink}
-                </Text>
-                <Text style={{ fontSize: 8, color: '#666', marginTop: 5 }}>
-                    Thank you for your business!
-                </Text>
-            </View>
+                    {/* Bank Transfer Details */}
+                    {hasBankDetails && (
+                        <View style={{ marginBottom: 10, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: '#eee' }}>
+                            <Text style={[styles.paymentText, { fontWeight: 'bold' }]}>Bank Transfer:</Text>
+                            <Text style={styles.paymentText}>Bank: {invoiceData.bankDetails?.bankName}</Text>
+                            <Text style={styles.paymentText}>Account Number: {invoiceData.bankDetails?.accountNumber}</Text>
+                            <Text style={styles.paymentText}>Account Name: {invoiceData.bankDetails?.accountName}</Text>
+                        </View>
+                    )}
 
-            {/* Footer */}
-            <View style={styles.footer}>
-                <Text>Generated by SmartFlow Africa</Text>
-            </View>
-        </Page>
-    </Document>
-);
+                    <Text style={styles.paymentText}>Online Payment:</Text>
+                    <Text style={[styles.paymentText, { color: 'blue', textDecoration: 'underline' }]}>
+                        {invoiceData.paymentLink}
+                    </Text>
+                    <Text style={{ fontSize: 8, color: '#666', marginTop: 5 }}>
+                        Thank you for your business!
+                    </Text>
+                </View>
+
+                {/* Footer */}
+                <View style={styles.footer}>
+                    <Text>Generated by SmartFlow Africa</Text>
+                </View>
+            </Page>
+        </Document>
+    )
+};
 
 export default InvoicePDF;

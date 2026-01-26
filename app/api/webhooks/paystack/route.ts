@@ -22,14 +22,13 @@ export async function POST(request: Request) {
         if (event.event === 'charge.success') {
             const { reference, metadata, paid_at, channel, amount } = event.data;
 
-            // Handle Client Subscription Payment
+            // 1. Handle Client Subscription Payment
             if (metadata?.type === 'SUBSCRIPTION_PAYMENT') {
                 const payment = await prisma.subscriptionPayment.findUnique({
                     where: { reference },
                 });
 
                 if (payment && payment.status !== 'success') {
-                    // Update Payment
                     await prisma.subscriptionPayment.update({
                         where: { id: payment.id },
                         data: {
@@ -39,7 +38,6 @@ export async function POST(request: Request) {
                         },
                     });
 
-                    // Update Client Subscription
                     const client = await prisma.client.findUnique({
                         where: { id: payment.clientId }
                     });
@@ -63,14 +61,39 @@ export async function POST(request: Request) {
                 }
             }
 
-            // Handle Job Payment
+            // 2. Handle Commitment Fee Payment (Appointments)
+            else if (metadata?.type === 'COMMITMENT_FEE') {
+                const appointmentId = metadata.appointmentId;
+                if (appointmentId) {
+                    const appointment = await prisma.appointment.findUnique({ where: { id: appointmentId } });
+
+                    if (appointment && appointment.status === 'PENDING_PAYMENT') {
+                        await prisma.appointment.update({
+                            where: { id: appointmentId },
+                            data: {
+                                status: 'CONFIRMED',
+                                notes: (appointment.notes || '') + `\n[PAID] Commitment Fee: ₦${(amount / 100).toLocaleString()}`,
+                            }
+                        });
+
+                        // Send WhatsApp Confirmation
+                        try {
+                            const { WhatsAppService } = await import('@/lib/api/evolution-whatsapp');
+                            const whatsapp = new WhatsAppService();
+                            const msg = `Payment Received! ✅\n\nYour appointment for ${new Date(appointment.date).toDateString()} at ${appointment.time} is now CONFIRMED.\n\nWe look forward to seeing you!`;
+                            await whatsapp.sendMessage(appointment.customerPhone, msg, appointment.clientId);
+                        } catch (wsError) {
+                            console.error('WhatsApp notification failed (commitment fee):', wsError);
+                        }
+                    }
+                }
+            }
+
+            // 3. Handle Job Payment
             else if (metadata?.type === 'JOB_PAYMENT') {
-                const payment = await prisma.jobPayment.findUnique({
-                    where: { reference },
-                });
+                const payment = await prisma.jobPayment.findUnique({ where: { reference } });
 
                 if (payment && payment.status !== 'success') {
-                    // Update Payment
                     await prisma.jobPayment.update({
                         where: { id: payment.id },
                         data: {
@@ -80,7 +103,6 @@ export async function POST(request: Request) {
                         },
                     });
 
-                    // Update Job Status
                     const job = await prisma.job.update({
                         where: { id: payment.jobId },
                         data: {
@@ -89,16 +111,17 @@ export async function POST(request: Request) {
                             status: 'completed',
                             completedAt: new Date()
                         },
-                        include: {
-                            client: { select: { businessName: true } }
-                        }
+                        include: { client: { select: { businessName: true } } }
                     });
 
-                    // Send WhatsApp payment confirmation
                     try {
+                        // Generate Receipt PDF
+                        const { generateInvoicePDF } = await import('@/lib/services/invoice-generator');
+                        const pdfData = await generateInvoicePDF(job.id, 'receipt', 'Online Payment');
+
                         const { WhatsAppService } = await import('@/lib/api/evolution-whatsapp');
                         const whatsapp = new WhatsAppService();
-                        const amountPaid = amount / 100; // Convert from kobo to naira
+                        const amountPaid = amount / 100;
                         const receiptMessage = `Payment Received! ✅
 
 Thank you, ${job.customerName}! Your payment has been confirmed.
@@ -107,20 +130,29 @@ Thank you, ${job.customerName}! Your payment has been confirmed.
 📋 Service: ${job.description}
 🔖 Job ID: ${job.id.slice(0, 8).toUpperCase()}
 
-Thank you for choosing ${job.client?.businessName || 'us'}! We appreciate your business. 🙏`;
+📄 *Please see the attached Receipt.*
 
-                        await whatsapp.sendMessage(job.customerPhone, receiptMessage, job.clientId);
+Thank you for choosing ${job.client?.businessName || 'us'}!`;
+
+                        await whatsapp.sendMedia(
+                            job.customerPhone,
+                            pdfData.base64,
+                            receiptMessage,
+                            job.clientId,
+                            'document'
+                        );
                     } catch (wsError) {
                         console.error('WhatsApp notification failed (payment):', wsError);
                     }
                 }
             }
         }
-
-        return NextResponse.json({ received: true });
-
-    } catch (error) {
-        console.error('Webhook Error:', error);
-        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
     }
+
+    return NextResponse.json({ received: true });
+
+} catch (error) {
+    console.error('Webhook Error:', error);
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+}
 }

@@ -19,10 +19,14 @@ import {
     Clock,
     User,
     RefreshCw,
-    MessageSquarePlus
+    MessageSquarePlus,
+    ArrowLeft,
+    Volume2,
+    VolumeX
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { CreateConversationModal } from './CreateConversationModal';
+import { NOTIFICATION_SOUND } from '@/lib/assets/notification_sound';
 
 interface TeamMember {
     id: string;
@@ -61,6 +65,26 @@ export default function TeamInbox() {
     const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
+
+    // Audio Alert State
+    const [isSoundEnabled, setIsSoundEnabled] = useState(true); // Default to ON
+
+    // Load preference from local storage
+    useEffect(() => {
+        const saved = localStorage.getItem('smartflow_sound_enabled');
+        if (saved !== null) {
+            setIsSoundEnabled(saved === 'true');
+        }
+    }, []);
+
+    const toggleSound = () => {
+        const newState = !isSoundEnabled;
+        setIsSoundEnabled(newState);
+        localStorage.setItem('smartflow_sound_enabled', String(newState));
+        window.dispatchEvent(new Event('smartflow-sound-toggle'));
+    };
+
+    const [showHeaderAssignMenu, setShowHeaderAssignMenu] = useState(false);
 
     // Fetch Team Members
     useEffect(() => {
@@ -191,21 +215,33 @@ export default function TeamInbox() {
     };
 
     const handleAssign = async (member: TeamMember) => {
-        if (!activeConversation) return;
+        if (!activeConversation) {
+            toast.error('No active conversation selected');
+            return;
+        }
+
+        const toastId = toast.loading('Assigning agent...');
+
         try {
+            console.log('Assigning', activeConversation.id, 'to', member.name);
             const result = await assignConversation(activeConversation.id, member.id, member.name);
+
             if (result.success) {
-                toast.success(`Assigned to ${member.name}`);
+                toast.success(`Assigned to ${member.name}`, { id: toastId });
+                // Force a reload to reflect changes if SSE is slow
+                // In a perfect world, SSE handles this, but for now this ensures visual confirmation
+                // router.refresh() might not be enough if using custom hooks
             } else {
                 throw new Error(result.error);
             }
         } catch (e) {
-            toast.error('Assignment failed');
+            console.error('Assignment error', e);
+            toast.error('Assignment failed', { id: toastId });
         }
     };
 
     return (
-        <div className="flex h-[calc(100vh-140px)] bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <div className="flex h-[calc(100vh-140px)] bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden relative">
             {client && (
                 <CreateConversationModal
                     isOpen={isCreateModalOpen}
@@ -216,10 +252,19 @@ export default function TeamInbox() {
             )}
 
             {/* LEFT COLUMN: Conversation List */}
-            <div className="w-80 border-r border-slate-200 flex flex-col bg-slate-50">
+            {/* on mobile: hidden if there is an active conversation */}
+            {/* on desktop: always visible */}
+            <div className={`w-full md:w-80 border-r border-slate-200 flex-col bg-slate-50 shrink-0 ${activeConversationId ? 'hidden md:flex' : 'flex'}`}>
                 <div className="p-4 border-b border-slate-200 bg-white">
                     <div className="flex justify-between items-center mb-3">
                         <h2 className="font-bold text-slate-800 text-lg">Chats</h2>
+                        <button
+                            onClick={toggleSound}
+                            className={`p-2 transition-colors rounded-lg flex items-center gap-2 text-sm font-medium ${isSoundEnabled ? 'text-green-600 bg-green-50' : 'text-slate-400 hover:bg-slate-50'}`}
+                            title={isSoundEnabled ? "Mute Notifications" : "Enable Sound Notifications"}
+                        >
+                            {isSoundEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
+                        </button>
                         <button
                             onClick={() => setIsCreateModalOpen(true)}
                             className="p-2 hover:bg-blue-50 text-blue-600 rounded-lg transition-colors flex items-center gap-2 text-sm font-medium"
@@ -280,21 +325,31 @@ export default function TeamInbox() {
             </div>
 
             {/* MIDDLE COLUMN: Chat Interface */}
-            <div className="flex-1 flex flex-col bg-white">
+            {/* on mobile: hidden if NO active conversation. If active, it takes full width. */}
+            {/* on desktop: always visible (flex-1) */}
+            <div className={`flex-1 flex-col bg-white overflow-hidden ${activeConversationId ? 'flex' : 'hidden md:flex'}`}>
                 {activeConversation ? (
                     <>
                         {/* Chat Header */}
-                        <div className="h-16 border-b border-slate-200 flex items-center justify-between px-6 bg-white">
+                        <div className="h-16 border-b border-slate-200 flex items-center justify-between px-4 md:px-6 bg-white shrink-0">
                             <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold">
+                                {/* Mobile Back Button */}
+                                <button
+                                    onClick={() => setActiveConversationId(null)}
+                                    className="md:hidden p-2 -ml-2 text-slate-500 hover:bg-slate-100 rounded-lg"
+                                >
+                                    <ArrowLeft size={20} />
+                                </button>
+
+                                <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold shrink-0">
                                     {activeConversation.customerName[0]}
                                 </div>
-                                <div>
-                                    <h2 className="font-semibold text-slate-900">{activeConversation.customerName}</h2>
-                                    <p className="text-xs text-slate-500">{activeConversation.customerPhone}</p>
+                                <div className="min-w-0">
+                                    <h2 className="font-semibold text-slate-900 truncate max-w-[150px] md:max-w-xs">{activeConversation.customerName}</h2>
+                                    <p className="text-xs text-slate-500 truncate">{activeConversation.customerPhone}</p>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1 md:gap-2">
                                 <button
                                     onClick={() => fetchMessages(false)}
                                     className="p-2 hover:bg-slate-100 rounded-lg text-slate-500"
@@ -304,15 +359,53 @@ export default function TeamInbox() {
                                 </button>
                                 <button
                                     onClick={handleResolve}
-                                    className="px-3 py-1.5 bg-green-50 text-green-700 text-sm font-medium rounded-lg border border-green-200 hover:bg-green-100 transition-colors flex items-center gap-2"
+                                    className="px-2 md:px-3 py-1.5 bg-green-50 text-green-700 text-sm font-medium rounded-lg border border-green-200 hover:bg-green-100 transition-colors flex items-center gap-2"
                                 >
-                                    <CheckCircle2 className="w-4 h-4" /> Resolve
+                                    <CheckCircle2 className="w-4 h-4" /> <span className="hidden md:inline">Resolve</span>
                                 </button>
+
+                                {/* Header Assignment Button */}
+                                <div className="relative">
+                                    <button
+                                        onClick={() => setShowHeaderAssignMenu(!showHeaderAssignMenu)}
+                                        className="p-2 hover:bg-slate-100 rounded-lg text-slate-500 hover:text-blue-600 transition-colors"
+                                        title="Assign Agent"
+                                    >
+                                        <UserPlus className="w-5 h-5" />
+                                    </button>
+
+                                    {showHeaderAssignMenu && (
+                                        <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-slate-200 rounded-lg shadow-xl z-50 py-1">
+                                            <div className="px-3 py-2 border-b border-slate-100 text-xs font-semibold text-slate-500">
+                                                Assign to...
+                                            </div>
+                                            {teamMembers.length > 0 ? (
+                                                teamMembers.map(member => (
+                                                    <button
+                                                        key={member.id}
+                                                        onClick={() => {
+                                                            handleAssign(member);
+                                                            setShowHeaderAssignMenu(false);
+                                                        }}
+                                                        className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                                                    >
+                                                        <div className="w-5 h-5 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-[10px] font-bold">
+                                                            {member.name.charAt(0)}
+                                                        </div>
+                                                        {member.name}
+                                                    </button>
+                                                ))
+                                            ) : (
+                                                <div className="px-3 py-2 text-xs text-slate-400">No agents available</div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         </div>
 
                         {/* Messages Area */}
-                        <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/50">
+                        <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 bg-slate-50/50">
                             {messagesLoading ? (
                                 <div className="flex items-center justify-center h-full">
                                     <div className="w-8 h-8 border-4 border-slate-200 border-t-blue-600 rounded-full animate-spin" />
@@ -321,13 +414,13 @@ export default function TeamInbox() {
                                 <>
                                     {messages.map((msg) => (
                                         <div key={msg.id} className={`flex ${msg.sender === 'agent' ? 'justify-end' : 'justify-start'}`}>
-                                            <div className={`max-w-[70%] rounded-2xl px-5 py-3 ${msg.sender === 'agent'
+                                            <div className={`max-w-[85%] md:max-w-[70%] rounded-2xl px-4 py-2 md:px-5 md:py-3 ${msg.sender === 'agent'
                                                 ? 'bg-blue-600 text-white rounded-tr-none'
                                                 : msg.sender === 'bot'
                                                     ? 'bg-slate-200 text-slate-700 rounded-tl-none border border-slate-300'
                                                     : 'bg-white text-slate-800 border border-slate-200 shadow-sm rounded-tl-none'
                                                 }`}>
-                                                <p className="text-sm leading-relaxed">{msg.text}</p>
+                                                <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.text}</p>
                                                 <p className={`text-[10px] mt-1 ${msg.sender === 'agent' ? 'text-blue-100' : 'text-slate-400'}`}>
                                                     {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                                     {msg.sender === 'bot' && ' • AI Assistant'}
@@ -346,16 +439,16 @@ export default function TeamInbox() {
                         </div>
 
                         {/* Input Area */}
-                        <div className="p-4 border-t border-slate-200 bg-white">
+                        <div className="p-3 md:p-4 border-t border-slate-200 bg-white shrink-0">
                             <div className="flex items-center gap-2 bg-slate-50 p-2 rounded-xl border border-slate-200 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all">
-                                <button className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg"><Smile className="w-5 h-5" /></button>
+                                <button className="hidden md:block p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg"><Smile className="w-5 h-5" /></button>
                                 <button className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg"><Paperclip className="w-5 h-5" /></button>
                                 <input
                                     type="text"
                                     value={messageInput}
                                     onChange={(e) => setMessageInput(e.target.value)}
                                     placeholder="Type a message..."
-                                    className="flex-1 bg-transparent border-none outline-none text-sm text-slate-900 placeholder:text-slate-400"
+                                    className="flex-1 bg-transparent border-none outline-none text-sm text-slate-900 placeholder:text-slate-400 min-w-0"
                                     onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
                                 />
                                 <button
@@ -375,13 +468,13 @@ export default function TeamInbox() {
                         <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
                             <Send className="w-8 h-8 text-slate-300" />
                         </div>
-                        <p>Select a conversation to start chatting</p>
+                        <p className="px-4 text-center">Select a conversation to start chatting</p>
                     </div>
                 )}
             </div>
 
             {/* RIGHT COLUMN: Team Status */}
-            <div className="w-72 border-l border-slate-200 bg-white flex flex-col">
+            <div className="hidden lg:flex w-72 border-l border-slate-200 bg-white flex-col shrink-0">
                 <div className="p-4 border-b border-slate-200">
                     <div className="flex items-center justify-between mb-6">
                         <h2 className="font-semibold text-slate-800">Team Status</h2>
@@ -411,7 +504,7 @@ export default function TeamInbox() {
                                 </div>
                                 <button
                                     onClick={() => handleAssign(member)}
-                                    className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-slate-100 rounded text-slate-500 transition-opacity"
+                                    className="p-1.5 bg-slate-50 hover:bg-blue-50 text-slate-500 hover:text-blue-600 rounded transition-colors border border-slate-200"
                                     title={`Assign to ${member.name}`}
                                 >
                                     <UserPlus className="w-4 h-4" />
