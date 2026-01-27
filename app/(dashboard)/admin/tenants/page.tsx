@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { toast } from 'sonner';
 
-export default function TenantsPage() {
+function TenantsContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const filterId = searchParams.get('id');
@@ -161,5 +161,13 @@ export default function TenantsPage() {
                 </div>
             )}
         </div>
+    );
+}
+
+export default function TenantsPage() {
+    return (
+        <Suspense fallback={<div className="p-6">Loading tenants...</div>}>
+            <TenantsContent />
+        </Suspense>
     );
 }
