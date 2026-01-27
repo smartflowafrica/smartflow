@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { PrismaClient, BusinessType, PlanTier } from '@prisma/client';
-import { createClient } from '@supabase/supabase-js';
+import bcrypt from 'bcryptjs';
 
 // Forces the use of the working connection string
 const prisma = new PrismaClient({
@@ -11,73 +11,38 @@ const prisma = new PrismaClient({
     }
 });
 
-// Create Supabase Admin client for Auth management
-
 export async function GET() {
     try {
         console.log('🌱 Starting Seed Process...');
         const results = [];
 
-        // Create Supabase Admin client for Auth management (Lazy init to prevent build errors)
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-        const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-        if (!supabaseUrl || !supabaseKey) {
-            return NextResponse.json({
-                success: false,
-                error: 'Missing Supabase credentials in environment'
-            }, { status: 500 });
-        }
-
-        const supabaseAdmin = createClient(supabaseUrl, supabaseKey, {
-            auth: {
-                autoRefreshToken: false,
-                persistSession: false
-            }
-        });
 
         // 1. Create Admin User (Auth + DB)
         const adminEmail = 'admin@smartflowafrica.com';
         const adminPassword = 'admin123'; // In a real app, force change on first login
 
-        // Create in Supabase Auth
-        const { data: adminAuth, error: adminAuthError } = await supabaseAdmin.auth.admin.createUser({
-            email: adminEmail,
-            password: adminPassword,
-            email_confirm: true,
-            user_metadata: { name: 'Super Admin', role: 'ADMIN' }
-        });
+        // Create in Prisma DB (Admin)
+        const hashedPassword = await bcrypt.hash(adminPassword, 10);
 
-        if (adminAuthError) {
-            // Ignore if already exists
-            results.push(`Admin Auth: ${adminAuthError.message}`);
-        } else {
-            results.push(`Admin Auth: Created (${adminAuth.user.id})`);
-        }
-
-        // Create in Prisma DB
         const adminDb = await prisma.user.upsert({
             where: { email: adminEmail },
             update: {},
             create: {
                 email: adminEmail,
                 name: 'Super Admin',
+                password: hashedPassword,
                 role: 'ADMIN',
             },
         });
         results.push(`Admin DB: ${adminDb.id}`);
 
 
+
+
         // 2. Client: Chidi Auto Repairs
         const chidiEmail = 'chidi@example.com';
-        const { data: chidiAuth, error: chidiAuthError } = await supabaseAdmin.auth.admin.createUser({
-            email: chidiEmail,
-            password: 'password123',
-            email_confirm: true,
-            user_metadata: { name: 'Chidi Okafor', role: 'CLIENT' }
-        });
-        if (chidiAuthError) results.push(`Chidi Auth: ${chidiAuthError.message}`);
-        else results.push(`Chidi Auth: Created`);
+        const chidiPassword = await bcrypt.hash('password123', 10);
 
         const chidiAuto = await prisma.client.upsert({
             where: { email: chidiEmail },
@@ -107,6 +72,7 @@ export async function GET() {
                     create: {
                         email: chidiEmail,
                         name: 'Chidi Okafor',
+                        password: chidiPassword,
                         role: 'CLIENT'
                     }
                 }
@@ -127,14 +93,7 @@ export async function GET() {
 
         // 3. Client: Mama's Kitchen
         const mamaEmail = 'mama@example.com';
-        const { data: mamaAuth, error: mamaAuthError } = await supabaseAdmin.auth.admin.createUser({
-            email: mamaEmail,
-            password: 'password123',
-            email_confirm: true,
-            user_metadata: { name: 'Ngozi Adeyemi', role: 'CLIENT' }
-        });
-        if (mamaAuthError) results.push(`Mama Auth: ${mamaAuthError.message}`);
-        else results.push(`Mama Auth: Created`);
+        const mamaPassword = await bcrypt.hash('password123', 10);
 
         const mamaKitchen = await prisma.client.upsert({
             where: { email: mamaEmail },
@@ -160,6 +119,7 @@ export async function GET() {
                     create: {
                         email: mamaEmail,
                         name: 'Ngozi Adeyemi',
+                        password: mamaPassword,
                         role: 'CLIENT'
                     }
                 }
