@@ -12,21 +12,29 @@ const prisma = new PrismaClient({
 });
 
 // Create Supabase Admin client for Auth management
-const supabaseAdmin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    {
-        auth: {
-            autoRefreshToken: false,
-            persistSession: false
-        }
-    }
-);
 
 export async function GET() {
     try {
         console.log('🌱 Starting Seed Process...');
         const results = [];
+
+        // Create Supabase Admin client for Auth management (Lazy init to prevent build errors)
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+        const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+        if (!supabaseUrl || !supabaseKey) {
+            return NextResponse.json({
+                success: false,
+                error: 'Missing Supabase credentials in environment'
+            }, { status: 500 });
+        }
+
+        const supabaseAdmin = createClient(supabaseUrl, supabaseKey, {
+            auth: {
+                autoRefreshToken: false,
+                persistSession: false
+            }
+        });
 
         // 1. Create Admin User (Auth + DB)
         const adminEmail = 'admin@smartflowafrica.com';
