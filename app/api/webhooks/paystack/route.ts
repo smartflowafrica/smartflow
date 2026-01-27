@@ -107,9 +107,10 @@ export async function POST(request: Request) {
                         where: { id: payment.jobId },
                         data: {
                             paymentStatus: 'PAID',
-                            finalAmount: amount,
+                            finalAmount: amount / 100,
                             status: 'completed',
-                            completedAt: new Date()
+                            completedAt: new Date(),
+                            feedbackRequestSent: true // Allow rating
                         },
                         include: { client: { select: { businessName: true } } }
                     });
@@ -117,7 +118,8 @@ export async function POST(request: Request) {
                     try {
                         // Generate Receipt PDF
                         const { generateInvoicePDF } = await import('@/lib/services/invoice-generator');
-                        const pdfData = await generateInvoicePDF(job.id, 'receipt', 'Online Payment');
+                        // Pass channel as method (e.g., 'card', 'bank')
+                        const pdfData = await generateInvoicePDF(job.id, 'receipt', channel ? channel.toUpperCase() : 'Online Payment');
 
                         const { WhatsAppService } = await import('@/lib/api/evolution-whatsapp');
                         const whatsapp = new WhatsAppService();
@@ -150,7 +152,6 @@ Thank you for choosing ${job.client?.businessName || 'us'}!`;
     }
 
     return NextResponse.json({ received: true });
-
 } catch (error) {
     console.error('Webhook Error:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });

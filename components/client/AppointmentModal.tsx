@@ -10,9 +10,11 @@ interface AppointmentModalProps {
     isOpen: boolean;
     onClose: () => void;
     appointment?: any; // Appointment to edit
+    terminology?: any;
+    isReservation?: boolean;
 }
 
-export function AppointmentModal({ isOpen, onClose, appointment }: AppointmentModalProps) {
+export function AppointmentModal({ isOpen, onClose, appointment, terminology, isReservation }: AppointmentModalProps) {
     const { client } = useClient();
     const [date, setDate] = useState('');
     const [time, setTime] = useState('');
@@ -29,6 +31,10 @@ export function AppointmentModal({ isOpen, onClose, appointment }: AppointmentMo
 
     const [customers, setCustomers] = useState<any[]>([]);
     const [services, setServices] = useState<any[]>([]);
+
+    const termJob = isReservation ? 'Reservation' : (terminology?.job || 'Appointment');
+    const termCustomer = isReservation ? 'Guest' : (terminology?.customer || 'Customer');
+    const termService = isReservation ? 'Table / Type' : (terminology?.service || 'Service');
 
     // Reset or Prefill
     useEffect(() => {
@@ -72,11 +78,26 @@ export function AppointmentModal({ isOpen, onClose, appointment }: AppointmentMo
                 const resServ = await fetch('/api/services?clientId=' + client.id + '&limit=100');
                 if (resServ.ok) {
                     const dataServ = await resServ.json();
+                    let fetchedServices = [];
                     if (Array.isArray(dataServ)) {
-                        setServices(dataServ);
+                        fetchedServices = dataServ;
                     } else if (dataServ.services && Array.isArray(dataServ.services)) {
-                        setServices(dataServ.services);
+                        fetchedServices = dataServ.services;
                     }
+
+                    // Sort logic: If reservation, prioritize tables/rooms.
+                    if (isReservation) {
+                        const priorityCats = ['Table', 'VIP Section', 'Room', 'Hall'];
+                        fetchedServices.sort((a: any, b: any) => {
+                            const aIsPriority = priorityCats.includes(a.category);
+                            const bIsPriority = priorityCats.includes(b.category);
+                            if (aIsPriority && !bIsPriority) return -1;
+                            if (!aIsPriority && bIsPriority) return 1;
+                            return 0;
+                        });
+                    }
+
+                    setServices(fetchedServices);
                 }
             } catch (e) {
                 console.error("Failed to load appointment data", e);
@@ -123,7 +144,7 @@ export function AppointmentModal({ isOpen, onClose, appointment }: AppointmentMo
             } else {
                 const existing = customers.find(c => c.id === customerId);
                 if (!existing) {
-                    toast.error('Please select a customer');
+                    toast.error(`Please select a ${termCustomer.toLowerCase()}`);
                     setLoading(false);
                     return;
                 }
@@ -158,13 +179,13 @@ export function AppointmentModal({ isOpen, onClose, appointment }: AppointmentMo
                 });
             }
 
-            if (!resBooking.ok) throw new Error('Failed to save appointment');
+            if (!resBooking.ok) throw new Error(`Failed to save ${termJob.toLowerCase()}`);
 
-            toast.success(appointment ? 'Appointment rescheduled' : 'Appointment created successfully');
+            toast.success(appointment ? `${termJob} rescheduled` : `${termJob} created successfully`);
             onClose();
             window.location.reload();
         } catch (error: any) {
-            toast.error(error.message || 'Failed to save appointment');
+            toast.error(error.message || `Failed to save ${termJob.toLowerCase()}`);
         } finally {
             setLoading(false);
         }
@@ -179,7 +200,7 @@ export function AppointmentModal({ isOpen, onClose, appointment }: AppointmentMo
                 <div className="p-6 border-b border-slate-100 flex justify-between items-center shrink-0">
                     <h2 className="text-xl font-bold flex items-center gap-2">
                         <CalendarIcon size={24} className="text-orange-500" />
-                        {appointment ? 'Reschedule Appointment' : 'Book Appointment'}
+                        {appointment ? `Reschedule ${termJob}` : `Book ${termJob}`}
                     </h2>
                     <button
                         type="button"
@@ -198,7 +219,7 @@ export function AppointmentModal({ isOpen, onClose, appointment }: AppointmentMo
                             <>
                                 {!appointment && (
                                     <div className="flex items-center justify-between bg-slate-50 p-3 rounded-lg border border-slate-100 mb-2">
-                                        <span className="text-sm font-medium text-slate-700">New Walk-in Customer?</span>
+                                        <span className="text-sm font-medium text-slate-700">New Walk-in {termCustomer}?</span>
                                         <div
                                             onClick={() => setIsNewCustomer(!isNewCustomer)}
                                             className={`w-11 h-6 flex items-center rounded-full p-1 cursor-pointer transition-colors ${isNewCustomer ? 'bg-orange-500' : 'bg-slate-300'}`}
@@ -236,14 +257,14 @@ export function AppointmentModal({ isOpen, onClose, appointment }: AppointmentMo
                                     </div>
                                 ) : (
                                     <div>
-                                        <label className="block text-sm font-medium mb-2">Customer</label>
+                                        <label className="block text-sm font-medium mb-2">{termCustomer}</label>
                                         <select
                                             required
                                             className="w-full p-2 border rounded-lg bg-white"
                                             value={customerId}
                                             onChange={e => setCustomerId(e.target.value)}
                                         >
-                                            <option value="">Select Customer</option>
+                                            <option value="">Select {termCustomer}</option>
                                             {customers.map(c => (
                                                 <option key={c.id} value={c.id}>{c.name} ({c.phone})</option>
                                             ))}
@@ -252,14 +273,14 @@ export function AppointmentModal({ isOpen, onClose, appointment }: AppointmentMo
                                 )}
 
                                 <div>
-                                    <label className="block text-sm font-medium mb-2">Service</label>
+                                    <label className="block text-sm font-medium mb-2">{termService}</label>
                                     <select
                                         required
                                         className="w-full p-2 border rounded-lg bg-white"
                                         value={serviceId}
                                         onChange={e => setServiceId(e.target.value)}
                                     >
-                                        <option value="">Select Service</option>
+                                        <option value="">Select {termService}</option>
                                         {services.map(s => (
                                             <option key={s.id} value={s.id}>{s.name} - {s.price} ({s.duration}m)</option>
                                         ))}
@@ -304,7 +325,7 @@ export function AppointmentModal({ isOpen, onClose, appointment }: AppointmentMo
                                     disabled={loading}
                                     className="w-full py-3 bg-orange-500 text-white rounded-lg font-medium hover:bg-orange-600 disabled:opacity-50 flex justify-center"
                                 >
-                                    {loading ? 'Saving...' : (appointment ? 'Confirm Reschedule' : 'Confirm Booking')}
+                                    {loading ? 'Saving...' : (appointment ? `Confirm Reschedule` : `Confirm ${termJob}`)}
                                 </button>
                             </>
                         )}

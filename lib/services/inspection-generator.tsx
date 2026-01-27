@@ -1,31 +1,25 @@
 import { renderToStream } from '@react-pdf/renderer';
-import InvoicePDF from '@/components/pdf/InvoicePDF';
+import InspectionPDF from '@/components/pdf/InspectionPDF';
 import prisma from '@/lib/prisma';
 import fs from 'fs';
 import path from 'path';
 
-type DocType = 'invoice' | 'receipt';
-
-export async function generateInvoicePDF(jobId: string, type: DocType = 'invoice', paymentMethod?: string) {
-    // Fetch Job Data
+export async function generateInspectionPDF(jobId: string, inspectionData: any) {
+    // Fetch Job & Client Data
     const job = await prisma.job.findUnique({
         where: { id: jobId },
         include: {
             client: { include: { branding: true } },
-            customer: true
+            customer: true,
+            vehicle: true
         }
     });
 
     if (!job) throw new Error('Job not found');
 
-    const isReceipt = type === 'receipt';
-
-    // Prepare Data
-    const amount = job.finalAmount || job.price || 0;
-    const paymentLink = `${process.env.NEXT_PUBLIC_APP_URL}/payment/pay/${job.id}`;
     let logoUrl = job.client.branding?.logoUrl;
 
-    // Resolve Logo (Local file to Base64)
+    // Resolve Logo
     if (logoUrl && logoUrl.startsWith('/uploads/')) {
         try {
             const filePath = path.join(process.cwd(), 'public', logoUrl);
@@ -41,38 +35,32 @@ export async function generateInvoicePDF(jobId: string, type: DocType = 'invoice
         }
     }
 
-    const docData = {
+    const vehicleStr = job.vehicle
+        ? `${job.vehicle.make} ${job.vehicle.model} ${job.vehicle.year || ''} - ${job.vehicle.plateNumber}`
+        : 'Vehicle details not recorded';
+
+    const pdfData = {
         id: job.id,
         date: new Date().toLocaleDateString(),
-        customerName: job.customerName,
-        customerEmail: job.customer?.email || undefined,
         businessName: job.client.businessName,
-        description: job.description,
-        amount: amount,
-        paymentLink: isReceipt ? (paymentMethod || 'PAID') : paymentLink,
+        customerName: job.customerName,
+        vehicle: vehicleStr,
         logoUrl: logoUrl || undefined,
-        // @ts-ignore
-        bankDetails: job.client.branding?.bankDetails || undefined,
-        isReceipt: isReceipt,
-        status: isReceipt ? 'PAID' : (job.paymentStatus || 'PENDING'),
-        paymentMethod: paymentMethod
+        items: inspectionData.items,
+        mechanicNotes: inspectionData.notes
     };
 
-    // Render PDF
-    const stream = await renderToStream(<InvoicePDF invoiceData={docData} />);
+    // Render
+    const stream = await renderToStream(<InspectionPDF data={pdfData} />);
     const chunks: Buffer[] = [];
     for await (const chunk of stream) {
         chunks.push(Buffer.from(chunk));
     }
     const pdfBuffer = Buffer.concat(chunks);
-
-    // Save to temp file logic can be here if needed for URL, 
-    // but we primarily need Base64 for WhatsApp
     const base64 = pdfBuffer.toString('base64');
 
     return {
         base64,
-        filename: `${type}-${job.id.slice(0, 8)}.pdf`,
-        job
+        filename: `Inspection-${job.id.slice(0, 8)}.pdf`
     };
 }

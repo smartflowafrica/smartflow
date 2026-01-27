@@ -7463,3 +7463,373 @@
   "apikey": "D9696C91-7B29-43DB-BDAE-5B94C750FC4B"
 }
 ---
+{
+  "event": "messages.upsert",
+  "instance": "SmartFlowMain",
+  "data": {
+    "key": {
+      "remoteJid": "2348145523052@s.whatsapp.net",
+      "fromMe": false,
+      "id": "3EB00D450E15BE3E6CAED6"
+    },
+    "pushName": "Ibiyinka",
+    "message": {
+      "conversation": "1",
+      "messageContextInfo": {
+        "deviceListMetadata": {
+          "senderKeyHash": "2X8IQI8dQ4S+2g==",
+          "senderTimestamp": "1769284567",
+          "senderAccountType": "E2EE",
+          "receiverAccountType": "E2EE",
+          "recipientKeyHash": "e/LfzrbeRUhvsA==",
+          "recipientTimestamp": "1769295447"
+        },
+        "deviceListMetadataVersion": 2,
+        "messageSecret": "CdfNkSNixEwPL7SPX315iLemz2jETHNEWYr33TWBJ/k="
+      }
+    },
+    "messageType": "conversation",
+    "messageTimestamp": 1769464196,
+    "owner": "SmartFlowMain",
+    "source": "web"
+  },
+  "destination": "http://host.docker.internal:3000/api/webhooks/whatsapp",
+  "date_time": "2026-01-26T19:48:23.982Z",
+  "sender": "2349113624251@s.whatsapp.net",
+  "server_url": "http://localhost:8080",
+  "apikey": "D9696C91-7B29-43DB-BDAE-5B94C750FC4B"
+}
+---
+{
+  "event": "messages.upsert",
+  "instance": "SmartFlowMain",
+  "data": {
+    "key": {
+      "remoteJid": "2348145523052@s.whatsapp.net",
+      "fromMe": false,
+      "id": "3EB06E5254266997C38DA4"
+    },
+    "pushName": "Ibiyinka",
+    "message": {
+      "conversation": "1",
+      "messageContextInfo": {
+        "deviceListMetadata": {
+          "senderKeyHash": "2X8IQI8dQ4S+2g==",
+          "senderTimestamp": "1769284567",
+          "senderAccountType": "E2EE",
+          "receiverAccountType": "E2EE",
+          "recipientKeyHash": "e/LfzrbeRUhvsA==",
+          "recipientTimestamp": "1769295447"
+        },
+        "deviceListMetadataVersion": 2,
+        "messageSecret": "zFJ7J++hAifBJLJsoOhnwZXIqrYDer3fcGJch+BzVxU="
+      }
+    },
+    "messageType": "conversation",
+    "messageTimestamp": 1769464656,
+    "owner": "SmartFlowMain",
+    "source": "web"
+  },
+  "destination": "http://host.docker.internal:3000/api/webhooks/whatsapp",
+  "date_time": "2026-01-26T19:56:04.770Z",
+  "sender": "2349113624251@s.whatsapp.net",
+  "server_url": "http://localhost:8080",
+  "apikey": "D9696C91-7B29-43DB-BDAE-5B94C750FC4B"
+}
+---
+{
+  "event": "messages.upsert",
+  "instance": "SmartFlowMain",
+  "data": {
+    "key": {
+      "remoteJid": "2348145523052@s.whatsapp.net",
+      "fromMe": false,
+      "id": "3EB0177A99D46E773A61C0"
+    },
+    "pushName": "Ibiyinka",
+    "message": {
+      "conversation": "1",
+      "messageContextInfo": {
+        "deviceListMetadata": {
+          "senderKeyHash": "2X8IQI8dQ4S+2g==",
+          "senderTimestamp": "1769284567",
+          "senderAccountType": "E2EE",
+          "receiverAccountType": "E2EE",
+          "recipientKeyHash": "e/LfzrbeRUhvsA==",
+          "recipientTimestamp": "1769295447"
+        },
+        "deviceListMetadataVersion": 2,
+        "messageSecret": "VU4p8J/IgKfCBJnF8ivNKXQiVFRZkP/iAgo2Jp+fuKQ="
+      }
+    },
+    "messageType": "conversation",
+    "messageTimestamp": 1769464988,
+    "owner": "SmartFlowMain",
+    "source": "web"
+  },
+  "destination": "http://host.docker.internal:3000/api/webhooks/whatsapp",
+  "date_time": "2026-01-26T20:01:36.598Z",
+  "sender": "2349113624251@s.whatsapp.net",
+  "server_url": "http://localhost:8080",
+  "apikey": "D9696C91-7B29-43DB-BDAE-5B94C750FC4B"
+}
+---
+{
+  "event": "messages.upsert",
+  "instance": "SmartFlowMain",
+  "data": {
+    "key": {
+      "remoteJid": "2348145523052@s.whatsapp.net",
+      "fromMe": false,
+      "id": "3EB0FA153A6D46D0D485E5"
+    },
+    "pushName": "Ibiyinka",
+    "message": {
+      "conversation": "1",
+      "messageContextInfo": {
+        "deviceListMetadata": {
+          "senderKeyHash": "2X8IQI8dQ4S+2g==",
+          "senderTimestamp": "1769284567",
+          "senderAccountType": "E2EE",
+          "receiverAccountType": "E2EE",
+          "recipientKeyHash": "e/LfzrbeRUhvsA==",
+          "recipientTimestamp": "1769295447"
+        },
+        "deviceListMetadataVersion": 2,
+        "messageSecret": "hVhyG7UYMhb75ip2UVtWLa3EDtnSzlaxGgfEGmBd514="
+      }
+    },
+    "messageType": "conversation",
+    "messageTimestamp": 1769465673,
+    "owner": "SmartFlowMain",
+    "source": "web"
+  },
+  "destination": "http://host.docker.internal:3000/api/webhooks/whatsapp",
+  "date_time": "2026-01-26T20:13:01.740Z",
+  "sender": "2349113624251@s.whatsapp.net",
+  "server_url": "http://localhost:8080",
+  "apikey": "D9696C91-7B29-43DB-BDAE-5B94C750FC4B"
+}
+---
+{
+  "event": "messages.upsert",
+  "instance": "SmartFlowMain",
+  "data": {
+    "key": {
+      "remoteJid": "2348145523052@s.whatsapp.net",
+      "fromMe": false,
+      "id": "3EB0F1C750B14B537B3490"
+    },
+    "pushName": "Ibiyinka",
+    "message": {
+      "conversation": "2",
+      "messageContextInfo": {
+        "deviceListMetadata": {
+          "senderKeyHash": "2X8IQI8dQ4S+2g==",
+          "senderTimestamp": "1769284567",
+          "senderAccountType": "E2EE",
+          "receiverAccountType": "E2EE",
+          "recipientKeyHash": "e/LfzrbeRUhvsA==",
+          "recipientTimestamp": "1769295447"
+        },
+        "deviceListMetadataVersion": 2,
+        "messageSecret": "YISIIQtHTBHxA9Qg3ciKup5zpWntCXsztnG5L+6y1Po="
+      }
+    },
+    "messageType": "conversation",
+    "messageTimestamp": 1769465967,
+    "owner": "SmartFlowMain",
+    "source": "web"
+  },
+  "destination": "http://host.docker.internal:3000/api/webhooks/whatsapp",
+  "date_time": "2026-01-26T20:17:55.522Z",
+  "sender": "2349113624251@s.whatsapp.net",
+  "server_url": "http://localhost:8080",
+  "apikey": "D9696C91-7B29-43DB-BDAE-5B94C750FC4B"
+}
+---
+{
+  "event": "messages.upsert",
+  "instance": "SmartFlowMain",
+  "data": {
+    "key": {
+      "remoteJid": "2348145523052@s.whatsapp.net",
+      "fromMe": false,
+      "id": "3EB0E4ED9C6C94370CE516"
+    },
+    "pushName": "Ibiyinka",
+    "message": {
+      "conversation": "1",
+      "messageContextInfo": {
+        "deviceListMetadata": {
+          "senderKeyHash": "2X8IQI8dQ4S+2g==",
+          "senderTimestamp": "1769284567",
+          "senderAccountType": "E2EE",
+          "receiverAccountType": "E2EE",
+          "recipientKeyHash": "e/LfzrbeRUhvsA==",
+          "recipientTimestamp": "1769295447"
+        },
+        "deviceListMetadataVersion": 2,
+        "messageSecret": "L4mICDJisvBs8s8HkgaF8Zusc0EZ7R6AOfhqgsL1zQc="
+      }
+    },
+    "messageType": "conversation",
+    "messageTimestamp": 1769466139,
+    "owner": "SmartFlowMain",
+    "source": "web"
+  },
+  "destination": "http://host.docker.internal:3000/api/webhooks/whatsapp",
+  "date_time": "2026-01-26T20:20:47.069Z",
+  "sender": "2349113624251@s.whatsapp.net",
+  "server_url": "http://localhost:8080",
+  "apikey": "D9696C91-7B29-43DB-BDAE-5B94C750FC4B"
+}
+---
+{
+  "event": "messages.upsert",
+  "instance": "SmartFlowMain",
+  "data": {
+    "key": {
+      "remoteJid": "2348145523052@s.whatsapp.net",
+      "fromMe": false,
+      "id": "3EB0F61BEF8A94785E0B9F"
+    },
+    "pushName": "Ibiyinka",
+    "message": {
+      "conversation": "2",
+      "messageContextInfo": {
+        "deviceListMetadata": {
+          "senderKeyHash": "2X8IQI8dQ4S+2g==",
+          "senderTimestamp": "1769284567",
+          "senderAccountType": "E2EE",
+          "receiverAccountType": "E2EE",
+          "recipientKeyHash": "e/LfzrbeRUhvsA==",
+          "recipientTimestamp": "1769295447"
+        },
+        "deviceListMetadataVersion": 2,
+        "messageSecret": "xGFClbgkt8sAPFjLfHQU8MfkxNVBmc87B0oUVXtb/wc="
+      }
+    },
+    "messageType": "conversation",
+    "messageTimestamp": 1769466240,
+    "owner": "SmartFlowMain",
+    "source": "web"
+  },
+  "destination": "http://host.docker.internal:3000/api/webhooks/whatsapp",
+  "date_time": "2026-01-26T20:22:28.311Z",
+  "sender": "2349113624251@s.whatsapp.net",
+  "server_url": "http://localhost:8080",
+  "apikey": "D9696C91-7B29-43DB-BDAE-5B94C750FC4B"
+}
+---
+{
+  "event": "messages.upsert",
+  "instance": "SmartFlowMain",
+  "data": {
+    "key": {
+      "remoteJid": "2348145523052@s.whatsapp.net",
+      "fromMe": false,
+      "id": "3EB0C9FA82F7DF85BB6F58"
+    },
+    "pushName": "Ibiyinka",
+    "message": {
+      "conversation": "ononcosdnocsndocsdnosd",
+      "messageContextInfo": {
+        "deviceListMetadata": {
+          "senderKeyHash": "2X8IQI8dQ4S+2g==",
+          "senderTimestamp": "1769284567",
+          "senderAccountType": "E2EE",
+          "receiverAccountType": "E2EE",
+          "recipientKeyHash": "e/LfzrbeRUhvsA==",
+          "recipientTimestamp": "1769295447"
+        },
+        "deviceListMetadataVersion": 2,
+        "messageSecret": "N0Q4jUMVb5TdS1ijGTt3rPZVsOhg4kI3Z0cx26D8EPw="
+      }
+    },
+    "messageType": "conversation",
+    "messageTimestamp": 1769466324,
+    "owner": "SmartFlowMain",
+    "source": "web"
+  },
+  "destination": "http://host.docker.internal:3000/api/webhooks/whatsapp",
+  "date_time": "2026-01-26T20:23:52.637Z",
+  "sender": "2349113624251@s.whatsapp.net",
+  "server_url": "http://localhost:8080",
+  "apikey": "D9696C91-7B29-43DB-BDAE-5B94C750FC4B"
+}
+---
+{
+  "event": "messages.upsert",
+  "instance": "SmartFlowMain",
+  "data": {
+    "key": {
+      "remoteJid": "2348145523052@s.whatsapp.net",
+      "fromMe": false,
+      "id": "3EB01C299037F174153CC1"
+    },
+    "pushName": "Ibiyinka",
+    "message": {
+      "conversation": "5",
+      "messageContextInfo": {
+        "deviceListMetadata": {
+          "senderKeyHash": "2X8IQI8dQ4S+2g==",
+          "senderTimestamp": "1769284567",
+          "senderAccountType": "E2EE",
+          "receiverAccountType": "E2EE",
+          "recipientKeyHash": "e/LfzrbeRUhvsA==",
+          "recipientTimestamp": "1769295447"
+        },
+        "deviceListMetadataVersion": 2,
+        "messageSecret": "lZIgOuI2u/bn4SiuCkrTwTqJKMr1/fNO3Zp8RDKe6x0="
+      }
+    },
+    "messageType": "conversation",
+    "messageTimestamp": 1769466395,
+    "owner": "SmartFlowMain",
+    "source": "web"
+  },
+  "destination": "http://host.docker.internal:3000/api/webhooks/whatsapp",
+  "date_time": "2026-01-26T20:25:03.086Z",
+  "sender": "2349113624251@s.whatsapp.net",
+  "server_url": "http://localhost:8080",
+  "apikey": "D9696C91-7B29-43DB-BDAE-5B94C750FC4B"
+}
+---
+{
+  "event": "messages.upsert",
+  "instance": "SmartFlowMain",
+  "data": {
+    "key": {
+      "remoteJid": "2348145523052@s.whatsapp.net",
+      "fromMe": false,
+      "id": "3EB0082BA4C11437353C5D"
+    },
+    "pushName": "Ibiyinka",
+    "message": {
+      "conversation": "khbvhvh;vh;vb;bh",
+      "messageContextInfo": {
+        "deviceListMetadata": {
+          "senderKeyHash": "2X8IQI8dQ4S+2g==",
+          "senderTimestamp": "1769284567",
+          "senderAccountType": "E2EE",
+          "receiverAccountType": "E2EE",
+          "recipientKeyHash": "e/LfzrbeRUhvsA==",
+          "recipientTimestamp": "1769295447"
+        },
+        "deviceListMetadataVersion": 2,
+        "messageSecret": "sBtcMTmUzyrpl1FfqIzMjUdNC8rBgpcCMoW701/YCyI="
+      }
+    },
+    "messageType": "conversation",
+    "messageTimestamp": 1769467433,
+    "owner": "SmartFlowMain",
+    "source": "web"
+  },
+  "destination": "http://host.docker.internal:3000/api/webhooks/whatsapp",
+  "date_time": "2026-01-26T20:42:20.933Z",
+  "sender": "2349113624251@s.whatsapp.net",
+  "server_url": "http://localhost:8080",
+  "apikey": "D9696C91-7B29-43DB-BDAE-5B94C750FC4B"
+}
+---

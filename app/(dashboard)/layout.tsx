@@ -11,7 +11,8 @@ import {
     LogOut,
     Activity,
     BarChart3,
-    Building2
+    Building2,
+    CreditCard
 } from 'lucide-react';
 import { BranchSelector } from '@/components/layout/BranchSelector';
 
@@ -78,6 +79,7 @@ export default function DashboardLayoutClient({
                     <NavLink href="/admin/tenants" icon={<Building2 size={20} />} label="Tenants" />
                     <NavLink href="/admin/sectors" icon={<Building2 size={20} />} label="Business Sectors" />
                     <NavLink href="/admin/users" icon={<Users size={20} />} label="Users" />
+                    <NavLink href="/admin/billing" icon={<CreditCard size={20} />} label="Billing" />
 
                     <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 px-4 mt-8">
                         System

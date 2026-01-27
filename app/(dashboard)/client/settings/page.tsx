@@ -4,12 +4,14 @@ import { useState } from 'react';
 import { useClient } from '@/hooks/useClient';
 import { toast } from 'sonner';
 import { updateClientProfile, updateClientBranding } from '@/app/actions/client-settings';
-import { Save, Loader2, Building, Palette, Users, Link2, CreditCard, Calendar, MessageSquare } from 'lucide-react';
+import { Save, Loader2, Building, Palette, Users, Link2, CreditCard, Calendar, MessageSquare, Bell } from 'lucide-react';
 import { TeamSettings } from '@/components/client/settings/TeamSettings';
 import BillingSettings from '@/components/client/settings/BillingSettings';
 import BookingSettings from '@/components/client/settings/BookingSettings';
 import BotSettings from '@/components/client/settings/BotSettings';
 import IntegrationSettings from '@/components/client/settings/IntegrationSettings';
+import { NotificationSettings } from '@/components/client/settings/NotificationSettings';
+import { getAllBusinessTypes } from '@/lib/config/business-types';
 
 import { useSearchParams } from 'next/navigation';
 
@@ -157,6 +159,16 @@ export default function ClientSettingsPage() {
                     <MessageSquare size={18} />
                     Chatbot
                 </button>
+                <button
+                    onClick={() => setActiveTab('notifications')}
+                    className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${activeTab === 'notifications'
+                        ? 'border-blue-600 text-blue-600'
+                        : 'border-transparent text-slate-500 hover:text-slate-700'
+                        }`}
+                >
+                    <Bell size={18} />
+                    Notifications
+                </button>
             </div>
 
             {/* Profile Tab */}
@@ -181,11 +193,11 @@ export default function ClientSettingsPage() {
                                     onChange={(e) => setProfileData({ ...profileData, businessType: e.target.value })}
                                     className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none bg-white"
                                 >
-                                    <option value="mechanic">Auto Mechanic Shop</option>
-                                    <option value="healthcare">Healthcare Clinic</option>
-                                    <option value="legal">Law Firm</option>
-                                    <option value="retail">Retail Store</option>
-                                    <option value="salon">Salon/Spa</option>
+                                    {getAllBusinessTypes().map((type) => (
+                                        <option key={type.id} value={type.id}>
+                                            {type.name}
+                                        </option>
+                                    ))}
                                 </select>
                             </div>
                             <div>
@@ -409,6 +421,11 @@ export default function ClientSettingsPage() {
             {/* Chatbot Tab */}
             {activeTab === 'chatbot' && (
                 <BotSettings />
+            )}
+
+            {/* Notifications Tab */}
+            {activeTab === 'notifications' && (
+                <NotificationSettings />
             )}
         </div>
     );

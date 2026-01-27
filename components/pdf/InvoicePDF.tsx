@@ -207,23 +207,39 @@ const InvoicePDF = ({ invoiceData }: InvoicePDFProps) => {
                 </View>
 
                 {/* Payment Info */}
+                {/* Payment Info */}
                 <View style={styles.paymentInfo}>
-                    <Text style={styles.paymentTitle}>Payment Instructions</Text>
+                    {!isPaid ? (
+                        <>
+                            <Text style={styles.paymentTitle}>Payment Instructions</Text>
 
-                    {/* Bank Transfer Details */}
-                    {hasBankDetails && (
-                        <View style={{ marginBottom: 10, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: '#eee' }}>
-                            <Text style={[styles.paymentText, { fontWeight: 'bold' }]}>Bank Transfer:</Text>
-                            <Text style={styles.paymentText}>Bank: {invoiceData.bankDetails?.bankName}</Text>
-                            <Text style={styles.paymentText}>Account Number: {invoiceData.bankDetails?.accountNumber}</Text>
-                            <Text style={styles.paymentText}>Account Name: {invoiceData.bankDetails?.accountName}</Text>
-                        </View>
+                            {/* Bank Transfer Details */}
+                            {hasBankDetails && (
+                                <View style={{ marginBottom: 10, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: '#eee' }}>
+                                    <Text style={[styles.paymentText, { fontWeight: 'bold' }]}>Bank Transfer:</Text>
+                                    <Text style={styles.paymentText}>Bank: {invoiceData.bankDetails?.bankName}</Text>
+                                    <Text style={styles.paymentText}>Account Number: {invoiceData.bankDetails?.accountNumber}</Text>
+                                    <Text style={styles.paymentText}>Account Name: {invoiceData.bankDetails?.accountName}</Text>
+                                </View>
+                            )}
+
+                            <Text style={styles.paymentText}>Online Payment:</Text>
+                            <Text style={[styles.paymentText, { color: 'blue', textDecoration: 'underline' }]}>
+                                {invoiceData.paymentLink}
+                            </Text>
+                        </>
+                    ) : (
+                        <>
+                            <Text style={styles.paymentTitle}>Payment Confirmation</Text>
+                            <Text style={styles.paymentText}>
+                                This invoice has been fully paid.
+                            </Text>
+                            <Text style={[styles.paymentText, { marginTop: 4 }]}>
+                                Paid via: {invoiceData.paymentMethod || 'Online Payment'}
+                            </Text>
+                        </>
                     )}
 
-                    <Text style={styles.paymentText}>Online Payment:</Text>
-                    <Text style={[styles.paymentText, { color: 'blue', textDecoration: 'underline' }]}>
-                        {invoiceData.paymentLink}
-                    </Text>
                     <Text style={{ fontSize: 8, color: '#666', marginTop: 5 }}>
                         Thank you for your business!
                     </Text>

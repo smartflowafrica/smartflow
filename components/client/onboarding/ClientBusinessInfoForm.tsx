@@ -3,6 +3,7 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import { getAllBusinessTypes } from '@/lib/config/business-types';
 
 const clientBusinessInfoSchema = z.object({
     name: z.string().min(2, "Business name is required"),
@@ -10,6 +11,7 @@ const clientBusinessInfoSchema = z.object({
     phone: z.string().min(10, "Valid phone number is required"),
     // email is read-only usually, or optional to update
     address: z.string().optional(),
+    type: z.string().min(1, "Business Type is required"),
 });
 
 type FormData = z.infer<typeof clientBusinessInfoSchema>;
@@ -20,6 +22,8 @@ interface ClientBusinessInfoFormProps {
 }
 
 export function ClientBusinessInfoForm({ defaultValues, onSubmit }: ClientBusinessInfoFormProps) {
+    const businessTypes = getAllBusinessTypes();
+
     const {
         register,
         handleSubmit,
@@ -46,6 +50,22 @@ export function ClientBusinessInfoForm({ defaultValues, onSubmit }: ClientBusine
                             placeholder="e.g. Quick Fix Auto"
                         />
                         {errors.name && <p className="text-xs text-red-500">{errors.name.message}</p>}
+                    </div>
+
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium">Business Type</label>
+                        <select
+                            {...register('type')}
+                            className="w-full px-3 py-2 border rounded-md bg-white"
+                        >
+                            <option value="">Select a type...</option>
+                            {businessTypes.map((type) => (
+                                <option key={type.id} value={type.id}>
+                                    {type.icon} {type.name}
+                                </option>
+                            ))}
+                        </select>
+                        {errors.type && <p className="text-xs text-red-500">{errors.type.message}</p>}
                     </div>
 
                     <div className="space-y-2">

@@ -40,6 +40,7 @@ export type BusinessTypeConfig = {
         icon: string;
         format: 'number' | 'currency' | 'percentage';
     }>;
+    serviceCategories: string[];
 };
 
 export const BUSINESS_TYPES: Record<string, BusinessTypeConfig> = {
@@ -55,7 +56,7 @@ export const BUSINESS_TYPES: Record<string, BusinessTypeConfig> = {
             service: 'Service',
             services: 'Services',
             statusLabel: 'Job Status',
-            calendarLabel: 'Service Schedule',
+            calendarLabel: 'Appointments',
         },
         statusStages: [
             { value: 'received', label: 'Received/Checked In', color: '#3B82F6', description: 'Car has been received' },
@@ -121,6 +122,7 @@ export const BUSINESS_TYPES: Record<string, BusinessTypeConfig> = {
             { id: 'revenue_today', label: 'Revenue Today', icon: '💰', format: 'currency' },
             { id: 'cash_collected', label: 'Cash Collected', icon: '💵', format: 'currency' },
         ],
+        serviceCategories: ['Maintenance', 'Repair', 'Inspection', 'Consultation', 'Other'],
     },
 
     RESTAURANT: {
@@ -177,6 +179,7 @@ export const BUSINESS_TYPES: Record<string, BusinessTypeConfig> = {
             { id: 'revenue_today', label: 'Revenue Today', icon: '💰', format: 'currency' },
             { id: 'cash_collected', label: 'Cash Collected', icon: '💵', format: 'currency' },
         ],
+        serviceCategories: ['Appetizer', 'Main Course', 'Dessert', 'Beverage', 'Side', 'Special', 'Table', 'VIP Section', 'Hall'],
     },
 
     SALON: {
@@ -232,6 +235,7 @@ export const BUSINESS_TYPES: Record<string, BusinessTypeConfig> = {
             { id: 'revenue_today', label: 'Revenue Today', icon: '💰', format: 'currency' },
             { id: 'cash_collected', label: 'Cash Collected', icon: '💵', format: 'currency' },
         ],
+        serviceCategories: ['Hair', 'Nails', 'Face', 'Massage', 'Waxing', 'Other'],
     },
 
     HOTEL: {
@@ -285,6 +289,7 @@ export const BUSINESS_TYPES: Record<string, BusinessTypeConfig> = {
             { id: 'revenue_today', label: 'Revenue Today', icon: '💰', format: 'currency' },
             { id: 'cash_collected', label: 'Cash Collected', icon: '💵', format: 'currency' },
         ],
+        serviceCategories: ['Room Service', 'Housekeeping', 'Maintenance', 'Amenities', 'Other'],
     },
 
     RETAIL: {
@@ -335,6 +340,7 @@ export const BUSINESS_TYPES: Record<string, BusinessTypeConfig> = {
             { id: 'revenue_today', label: 'Revenue Today', icon: '💰', format: 'currency' },
             { id: 'cash_collected', label: 'Cash Collected', icon: '💵', format: 'currency' },
         ],
+        serviceCategories: ['Electronics', 'Clothing', 'Home', 'Beauty', 'Groceries', 'Other'],
     },
 
     HEALTHCARE: {
@@ -389,6 +395,7 @@ export const BUSINESS_TYPES: Record<string, BusinessTypeConfig> = {
             { id: 'revenue_today', label: 'Revenue Today', icon: '💰', format: 'currency' },
             { id: 'cash_collected', label: 'Cash Collected', icon: '💵', format: 'currency' },
         ],
+        serviceCategories: ['Consultation', 'Treatment', 'Lab Test', 'Pharmacy', 'Other'],
     },
 };
 

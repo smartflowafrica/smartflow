@@ -52,7 +52,25 @@ export class MessageProcessor {
                 }
             }
 
-            // 1. Check for Active Flow (if not interrupted)
+            // 1. Check for Rating Response (1-5) - PRIORITIZED
+            // If a user replies "1", we check if they have a pending feedback job first.
+            // If so, it's a rating. If not, it might be a menu selection (Service Match) OR a Flow Input.
+            const ratingMatch = message.trim().match(/^([1-5])(\s*stars?)?$/i);
+            if (ratingMatch) {
+                const rating = parseInt(ratingMatch[1]);
+                const ratingResult = await this.handleRatingResponse(clientId, customerPhone, rating);
+                if (ratingResult) {
+                    console.log(`[MessageProcessor] Handled Rating: ${rating}`);
+                    return {
+                        response: ratingResult.response,
+                        confidence: 100,
+                        action: 'reply',
+                        metadata: { source: 'rating_handler' }
+                    };
+                }
+            }
+
+            // 2. Check for Active Flow (if not interrupted)
             const flowResult = await this.flowEngine.handleMessage(clientId, customerPhone, message, context.customerName);
             if (flowResult) {
                 console.log(`[MessageProcessor] Handled by FlowEngine`);
@@ -64,7 +82,7 @@ export class MessageProcessor {
                 };
             }
 
-            // 1. Check FAQs first (business-specific answers)
+            // 3. Check FAQs (business-specific answers)
             const faqMatch = await faqMatcher.findMatch(message, clientId);
             if (faqMatch && faqMatch.confidence >= 60) {
                 console.log(`[MessageProcessor] FAQ Match (${faqMatch.confidence}%): ${message}`);
@@ -76,7 +94,7 @@ export class MessageProcessor {
                 };
             }
 
-            // 2. Check for Service Name Match (Trigger Booking)
+            // 4. Check for Service Name Match (Trigger Booking)
             const serviceMatch = await this.findServiceMatch(clientId, message);
             if (serviceMatch) {
                 console.log(`[MessageProcessor] Service Match: ${serviceMatch.name}`);
@@ -88,21 +106,6 @@ export class MessageProcessor {
                 });
                 // Re-process to let FlowEngine handle the first step
                 return this.processMessage(message, customerPhone, clientId, context.customerName);
-            }
-
-            // 2b. Check for Rating Response (1-5)
-            const ratingMatch = message.trim().match(/^([1-5])(\s*stars?)?$/i);
-            if (ratingMatch) {
-                const rating = parseInt(ratingMatch[1]);
-                const ratingResult = await this.handleRatingResponse(clientId, customerPhone, rating);
-                if (ratingResult) {
-                    return {
-                        response: ratingResult.response,
-                        confidence: 100,
-                        action: 'reply',
-                        metadata: { source: 'rating_handler' }
-                    };
-                }
             }
 
             // 3. Fall back to intent-based responses
@@ -163,7 +166,18 @@ export class MessageProcessor {
             const job = await prisma.job.findFirst({
                 where: {
                     clientId,
-                    customerPhone,
+                    // Match any format: 080..., 234..., +234...
+                    // Since we can't easily do 'in' variants here without passing them,
+                    // we'll try to match roughly.
+                    // Better: We stored the job with a specific phone.
+                    // If we assume the job uses the '0' format (Local), and `customerPhone` is '234' (Intl)
+                    // We should convert incoming to local or try both.
+                    OR: [
+                        { customerPhone: customerPhone }, // Exact match
+                        { customerPhone: customerPhone.replace(/^234/, '0') }, // Convert 234 to 0
+                        { customerPhone: customerPhone.replace(/^\+234/, '0') }, // Convert +234 to 0
+                        { customerPhone: '234' + customerPhone.replace(/^0/, '') } // Convert 0 to 234
+                    ],
                     status: 'completed',
                     feedbackRequestSent: true,
                     feedbackRating: null // Only if not yet rated

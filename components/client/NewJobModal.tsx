@@ -90,29 +90,46 @@ export function NewJobModal({ isOpen, onClose, clientId, businessType, terminolo
         return labor + partsTotal;
     };
 
-    const addPart = (productId: string) => {
-        const product = products.find(p => p.id === productId);
-        if (!product) return;
+    const addPart = (itemId: string, type: 'PRODUCT' | 'SERVICE' = 'PRODUCT') => {
+        let item: any;
+        if (type === 'PRODUCT') {
+            item = products.find(p => p.id === itemId);
+        } else {
+            item = services.find(s => s.name === itemId || s.id === itemId);
+        }
 
-        const existing = selectedParts.find(p => p.productId === productId);
-        if (existing) return; // Prevent duplicates for now
+        if (!item) return;
 
-        const newParts = [...selectedParts, {
-            productId: product.id,
-            name: product.name,
-            price: product.price,
+        // Use name or id as unique key
+        const uniqueId = type === 'PRODUCT' ? item.id : (item.id || item.name);
+
+        // Check existing by comparing ID if product, or name if service/other
+        const existing = selectedParts.find(p =>
+            (type === 'PRODUCT' && p.productId === uniqueId) ||
+            (type === 'SERVICE' && p.name === item.name)
+        );
+
+        if (existing) {
+            // Optional: Auto-increment quantity instead of returning?
+            updatePartQuantity(uniqueId, existing.quantity + 1);
+            return;
+        }
+
+        const newItem = {
+            productId: type === 'PRODUCT' ? item.id : undefined,
+            id: uniqueId, // Internal tracking ID
+            type: type,
+            name: item.name,
+            price: item.price || 0,
             quantity: 1
-        }];
+        };
 
+        const newParts = [...selectedParts, newItem];
         setSelectedParts(newParts);
 
-        // Update Total Price
-        // We need to fetch the current displayed price, parse it as "Labor + Old Parts", then add new part...
-        // Wait, "price" field is the TOTAL price. We don't store "Labor" separately in state.
-        // This makes updating tricky if the user edited the price manually.
-        // We will assume the visible price IS the total, and simply add the part cost to it.
+        // Update Total
         const currentTotal = parseFloat(parseNumber(formData.price || '0'));
-        const newTotal = currentTotal + parseFloat(product.price);
+        const newTotal = currentTotal + parseFloat(newItem.price);
 
         setFormData(prev => ({
             ...prev,
@@ -120,27 +137,27 @@ export function NewJobModal({ isOpen, onClose, clientId, businessType, terminolo
         }));
     };
 
-    const removePart = (productId: string) => {
-        const part = selectedParts.find(p => p.productId === productId);
-        const newParts = selectedParts.filter(p => p.productId !== productId);
+    const removePart = (id: string) => {
+        const part = selectedParts.find(p => p.id === id || p.productId === id);
+        const newParts = selectedParts.filter(p => (p.id !== id && p.productId !== id));
         setSelectedParts(newParts);
 
         if (part) {
             const currentTotal = parseFloat(parseNumber(formData.price || '0'));
             const deduction = part.price * part.quantity;
-            const newTotal = Math.max(0, currentTotal - deduction); // Prevent negative
+            const newTotal = Math.max(0, currentTotal - deduction);
             setFormData(prev => ({ ...prev, price: formatNumber(newTotal.toString()) }));
         }
     };
 
-    const updatePartQuantity = (productId: string, qty: number) => {
+    const updatePartQuantity = (id: string, qty: number) => {
         if (qty < 1) return;
 
-        const oldPart = selectedParts.find(p => p.productId === productId);
+        const oldPart = selectedParts.find(p => p.id === id || p.productId === id);
         if (!oldPart) return;
 
         const newParts = selectedParts.map(p =>
-            p.productId === productId ? { ...p, quantity: qty } : p
+            (p.id === id || p.productId === id) ? { ...p, quantity: qty } : p
         );
         setSelectedParts(newParts);
 
@@ -158,9 +175,45 @@ export function NewJobModal({ isOpen, onClose, clientId, businessType, terminolo
         try {
             const { createJob } = await import('@/app/actions/jobs');
 
+            // Dynamic Description Construction
             let description = formData.serviceType;
-            if (formData.vehicleMake) {
-                description = `${formData.vehicleYear} ${formData.vehicleMake} ${formData.vehicleModel} - ${formData.serviceType}`;
+            let metadata: any = {
+                serviceType: formData.serviceType
+            };
+
+            if (businessType === 'AUTO_MECHANIC') {
+                if (formData.vehicleMake) {
+                    description = `${formData.vehicleYear} ${formData.vehicleMake} ${formData.vehicleModel} - ${formData.serviceType}`;
+                }
+                metadata.vehicle = {
+                    make: formData.vehicleMake,
+                    model: formData.vehicleModel,
+                    year: formData.vehicleYear,
+                    plate: formData.licensePlate
+                };
+            } else if (businessType === 'HOTEL') {
+                description = `Room ${formData.vehicleModel || 'Unassigned'} - ${formData.serviceType}`;
+                metadata.hotel = {
+                    roomType: formData.vehicleMake,
+                    roomNumber: formData.vehicleModel,
+                    checkIn: formData.vehicleYear,
+                    checkOut: formData.licensePlate
+                };
+            } else if (businessType === 'RESTAURANT') {
+                // For Restaurant, description is based on Table + First Item or generic
+                const itemsSummary = selectedParts.map(p =>
+                    p.quantity > 1 ? `${p.quantity}x ${p.name}` : p.name
+                ).join(', ') || 'Order';
+                description = `Table ${formData.vehicleModel || 'Walk-in'} - ${itemsSummary}`;
+                metadata.restaurant = {
+                    tableNumber: formData.vehicleModel,
+                    guestCount: formData.vehicleYear
+                };
+            } else if (businessType === 'RETAIL') {
+                const itemsSummary = selectedParts.map(p =>
+                    p.quantity > 1 ? `${p.quantity}x ${p.name}` : p.name
+                ).join(', ') || 'Sale';
+                description = `Order - ${itemsSummary}`;
             }
 
             // Prepare items
@@ -180,15 +233,7 @@ export function NewJobModal({ isOpen, onClose, clientId, businessType, terminolo
                 // Parse formatted price back to number
                 price: formData.price ? parseFloat(parseNumber(formData.price)) : undefined,
                 items: items,
-                metadata: {
-                    vehicle: {
-                        make: formData.vehicleMake,
-                        model: formData.vehicleModel,
-                        year: formData.vehicleYear,
-                        plate: formData.licensePlate
-                    },
-                    serviceType: formData.serviceType
-                },
+                metadata: metadata,
                 notes: formData.notes
             });
 
@@ -310,181 +355,305 @@ export function NewJobModal({ isOpen, onClose, clientId, businessType, terminolo
                         )}
                     </div>
 
-                    {/* Vehicle Information */}
-                    <div>
-                        <h3 className="text-lg font-semibold text-slate-900 mb-4">Vehicle Information</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-2">
-                                    Make *
-                                </label>
-                                <input
-                                    type="text"
-                                    required
-                                    value={formData.vehicleMake}
-                                    onChange={(e) => setFormData({ ...formData, vehicleMake: e.target.value })}
-                                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    placeholder="Toyota"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-2">
-                                    Model *
-                                </label>
-                                <input
-                                    type="text"
-                                    required
-                                    value={formData.vehicleModel}
-                                    onChange={(e) => setFormData({ ...formData, vehicleModel: e.target.value })}
-                                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    placeholder="Camry"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-2">
-                                    Year
-                                </label>
-                                <input
-                                    type="text"
-                                    value={formData.vehicleYear}
-                                    onChange={(e) => setFormData({ ...formData, vehicleYear: e.target.value })}
-                                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    placeholder="2020"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-2">
-                                    License Plate
-                                </label>
-                                <input
-                                    type="text"
-                                    value={formData.licensePlate}
-                                    onChange={(e) => setFormData({ ...formData, licensePlate: e.target.value })}
-                                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    placeholder="ABC-123-XY"
-                                />
+                    {/* Vehicle/Room/Table Information based on Business Type */}
+                    {businessType === 'AUTO_MECHANIC' && (
+                        <div>
+                            <h3 className="text-lg font-semibold text-slate-900 mb-4">Vehicle Information</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                                        Make *
+                                    </label>
+                                    <input
+                                        type="text"
+                                        required
+                                        value={formData.vehicleMake}
+                                        onChange={(e) => setFormData({ ...formData, vehicleMake: e.target.value })}
+                                        className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        placeholder="Toyota"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                                        Model *
+                                    </label>
+                                    <input
+                                        type="text"
+                                        required
+                                        value={formData.vehicleModel}
+                                        onChange={(e) => setFormData({ ...formData, vehicleModel: e.target.value })}
+                                        className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        placeholder="Camry"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                                        Year
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={formData.vehicleYear}
+                                        onChange={(e) => setFormData({ ...formData, vehicleYear: e.target.value })}
+                                        className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        placeholder="2020"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                                        License Plate
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={formData.licensePlate}
+                                        onChange={(e) => setFormData({ ...formData, licensePlate: e.target.value })}
+                                        className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        placeholder="ABC-123-XY"
+                                    />
+                                </div>
                             </div>
                         </div>
+                    )}
+
+                    {businessType === 'HOTEL' && (
+                        <div>
+                            <h3 className="text-lg font-semibold text-slate-900 mb-4">Reservation Details</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                                        Room Type *
+                                    </label>
+                                    <select
+                                        required
+                                        value={formData.vehicleMake} // Reuse field for Room Type
+                                        onChange={(e) => setFormData({ ...formData, vehicleMake: e.target.value })}
+                                        className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                                    >
+                                        <option value="">Select Room Type...</option>
+                                        <option value="Standard">Standard Room</option>
+                                        <option value="Deluxe">Deluxe Room</option>
+                                        <option value="Suite">Suite</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                                        Room Number (Optional)
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={formData.vehicleModel} // Reuse field for Room Number
+                                        onChange={(e) => setFormData({ ...formData, vehicleModel: e.target.value })}
+                                        className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        placeholder="e.g. 104"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                                        Check-in Date
+                                    </label>
+                                    <input
+                                        type="date"
+                                        value={formData.vehicleYear} // Reuse field for Check-in
+                                        onChange={(e) => setFormData({ ...formData, vehicleYear: e.target.value })}
+                                        className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                                        Check-out Date
+                                    </label>
+                                    <input
+                                        type="date"
+                                        value={formData.licensePlate} // Reuse field for Check-out
+                                        onChange={(e) => setFormData({ ...formData, licensePlate: e.target.value })}
+                                        className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {businessType === 'RESTAURANT' && (
+                        <div>
+                            <h3 className="text-lg font-semibold text-slate-900 mb-4">Table Information</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                                        Table Number *
+                                    </label>
+                                    <input
+                                        type="text"
+                                        required
+                                        value={formData.vehicleModel} // Reuse field for Table Number
+                                        onChange={(e) => setFormData({ ...formData, vehicleModel: e.target.value })}
+                                        className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        placeholder="Table 5"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                                        Number of Guests
+                                    </label>
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        value={formData.vehicleYear} // Reuse field for Guest Count
+                                        onChange={(e) => setFormData({ ...formData, vehicleYear: e.target.value })}
+                                        className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        placeholder="2"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Retail / General - Default to Simple Item Mode */}
+                    {businessType === 'RETAIL' && (
+                        <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 mb-4 text-sm text-slate-600">
+                            Create a new order for this customer. Add items below.
+                        </div>
+                    )}
+
+                    {/* Service Details Header - Adjust based on business type logic if needed, or keep generic */}
+                    {/* Hide Single Service Type for Restaurant - Use Items stack instead */}
+                    {businessType !== 'RESTAURANT' && (
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-2">
+                                Service Type *
+                            </label>
+                            <select
+                                required
+                                value={formData.serviceType}
+                                onChange={handleServiceChange}
+                                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                                <option value="">Select service...</option>
+                                {services.length > 0 ? (
+                                    services.map(s => (
+                                        <option key={s.id} value={s.name}>
+                                            {s.name} - ₦{s.price?.toLocaleString()}
+                                        </option>
+                                    ))
+                                ) : (
+                                    <>
+                                        {/* Fallback Options if no services created yet */}
+                                        <option value="Oil Change">Oil Change</option>
+                                        <option value="Brake Service">Brake Service</option>
+                                        <option value="Engine Repair">Engine Repair</option>
+                                        <option value="Tire Replacement">Tire Replacement</option>
+                                        <option value="Other">Other</option>
+                                    </>
+                                )}
+                            </select>
+                        </div>
+                    )}
+
+                    {/* Price Input - Computed or Manual */}
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-2">
+                            Total Price (₦)
+                        </label>
+                        <input
+                            type="text"
+                            value={formData.price}
+                            onChange={(e) => {
+                                const formatted = formatNumber(e.target.value);
+                                setFormData({ ...formData, price: formatted });
+                            }}
+                            className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="0.00"
+                        />
                     </div>
 
-                    {/* Service Details */}
+                    {/* Parts & Materials / Order Items */}
                     <div>
-                        <h3 className="text-lg font-semibold text-slate-900 mb-4">Service Details</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-2">
-                                    Service Type *
-                                </label>
-                                <select
-                                    required
-                                    value={formData.serviceType}
-                                    onChange={handleServiceChange}
-                                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                >
-                                    <option value="">Select service...</option>
-                                    {services.length > 0 ? (
-                                        services.map(s => (
-                                            <option key={s.id} value={s.name}>
-                                                {s.name} - ₦{s.price?.toLocaleString()}
-                                            </option>
-                                        ))
-                                    ) : (
-                                        <>
-                                            {/* Fallback Options if no services created yet */}
-                                            <option value="Oil Change">Oil Change</option>
-                                            <option value="Brake Service">Brake Service</option>
-                                            <option value="Engine Repair">Engine Repair</option>
-                                            <option value="Tire Replacement">Tire Replacement</option>
-                                            <option value="Other">Other</option>
-                                        </>
-                                    )}
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-2">
-                                    Price (₦)
-                                </label>
-                                <input
-                                    type="text"
-                                    value={formData.price}
-                                    onChange={(e) => {
-                                        const formatted = formatNumber(e.target.value);
-                                        setFormData({ ...formData, price: formatted });
-                                    }}
-                                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    placeholder="0.00"
-                                />
-                            </div>
-                        </div>
-
-                        {/* Parts & Materials */}
-                        <div>
-                            <h3 className="text-lg font-semibold text-slate-900 mb-4">Parts & Materials</h3>
-                            <div className="space-y-3 mb-4">
-                                {selectedParts.map(part => (
-                                    <div key={part.productId} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-200">
-                                        <div>
-                                            <div className="font-medium text-slate-800">{part.name}</div>
-                                            <div className="text-xs text-slate-500">₦{part.price.toLocaleString()} each</div>
-                                        </div>
-                                        <div className="flex items-center gap-3">
-                                            <div className="flex items-center bg-white border border-slate-300 rounded-md">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => updatePartQuantity(part.productId, part.quantity - 1)}
-                                                    className="px-2 py-1 text-slate-600 hover:bg-slate-100"
-                                                >-</button>
-                                                <span className="px-2 text-sm font-medium">{part.quantity}</span>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => updatePartQuantity(part.productId, part.quantity + 1)}
-                                                    className="px-2 py-1 text-slate-600 hover:bg-slate-100"
-                                                >+</button>
-                                            </div>
+                        <h3 className="text-lg font-semibold text-slate-900 mb-4">
+                            {businessType === 'RESTAURANT' ? 'Order Items' : 'Parts & Materials'}
+                        </h3>
+                        <div className="space-y-3 mb-4">
+                            {selectedParts.map(part => (
+                                <div key={part.id || part.productId} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-200">
+                                    <div>
+                                        <div className="font-medium text-slate-800">{part.name}</div>
+                                        <div className="text-xs text-slate-500">₦{part.price.toLocaleString()} each</div>
+                                        {part.type === 'SERVICE' && <span className="text-[10px] bg-blue-100 text-blue-700 px-1 rounded">Menu</span>}
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <div className="flex items-center bg-white border border-slate-300 rounded-md">
                                             <button
                                                 type="button"
-                                                onClick={() => removePart(part.productId)}
-                                                className="text-red-500 hover:text-red-700"
-                                            >
-                                                <X size={18} />
-                                            </button>
+                                                onClick={() => updatePartQuantity(part.id || part.productId, part.quantity - 1)}
+                                                className="px-2 py-1 text-slate-600 hover:bg-slate-100"
+                                            >-</button>
+                                            <span className="px-2 text-sm font-medium">{part.quantity}</span>
+                                            <button
+                                                type="button"
+                                                onClick={() => updatePartQuantity(part.id || part.productId, part.quantity + 1)}
+                                                className="px-2 py-1 text-slate-600 hover:bg-slate-100"
+                                            >+</button>
                                         </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => removePart(part.id || part.productId)}
+                                            className="text-red-500 hover:text-red-700"
+                                        >
+                                            <X size={18} />
+                                        </button>
                                     </div>
-                                ))}
-                            </div>
+                                </div>
+                            ))}
+                        </div>
 
-                            <div className="flex gap-2">
-                                <select className="flex-1 px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    onChange={(e) => {
-                                        if (e.target.value) {
-                                            addPart(e.target.value);
-                                            e.target.value = ""; // Reset
+                        <div className="flex gap-2">
+                            <select className="flex-1 px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                onChange={(e) => {
+                                    if (e.target.value) {
+                                        // For Restaurant, check if value is in services first (assume keys don't clash or use prefix)
+                                        // A simple heuristic: if it starts with 'srv_', it's service. But IDs are unpredictable.
+                                        // Let's use the OPTGROUP approach or just search both.
+                                        const val = e.target.value;
+                                        if (val.startsWith('srv_')) {
+                                            addPart(val.replace('srv_', ''), 'SERVICE');
+                                        } else {
+                                            addPart(val, 'PRODUCT');
                                         }
-                                    }}
-                                >
-                                    <option value="">+ Add Part from Inventory...</option>
+                                        e.target.value = ""; // Reset
+                                    }
+                                }}
+                            >
+                                <option value="">+ Add Item...</option>
+                                {(businessType === 'RESTAURANT' || businessType === 'RETAIL') && services.length > 0 && (
+                                    <optgroup label="Menu Items / Services">
+                                        {services.map(s => (
+                                            <option key={s.id} value={`srv_${s.id || s.name}`}>
+                                                {s.name} - ₦{s.price?.toLocaleString()}
+                                            </option>
+                                        ))}
+                                    </optgroup>
+                                )}
+                                <optgroup label="Inventory / Products">
                                     {products.map(p => (
                                         <option key={p.id} value={p.id} disabled={selectedParts.some(sp => sp.productId === p.id)}>
                                             {p.name} (Stock: {p.quantity}) - ₦{p.price.toLocaleString()}
                                         </option>
                                     ))}
-                                </select>
-                            </div>
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-2">
-                                Notes
-                            </label>
-                            <textarea
-                                value={formData.notes}
-                                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                                rows={3}
-                                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                placeholder="Additional details about the service..."
-                            />
+                                </optgroup>
+                            </select>
                         </div>
                     </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-2">
+                            Notes
+                        </label>
+                        <textarea
+                            value={formData.notes}
+                            onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                            rows={3}
+                            className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="Additional details about the service..."
+                        />
+                    </div>
+
 
                     <div className="flex bg-gray-50 -mx-6 -mb-6 p-6 justify-end gap-3 border-t border-slate-200">
                         <button

@@ -231,7 +231,8 @@ export async function getClientJobs(clientId: string) {
             orderBy: { createdAt: 'desc' },
             include: {
                 customer: true,
-                branch: true
+                branch: true,
+                items: true
             }
         });
         return { success: true, data: jobs };
@@ -272,9 +273,10 @@ export async function recordJobPayment(jobId: string, amount: number, method: st
             where: { id: jobId },
             data: {
                 paymentStatus: 'PAID',
-                finalAmount: amount * 100, // Store in kobo
+                finalAmount: amount, // Store in Naira
                 status: 'completed', // Auto-complete if paid
-                completedAt: new Date()
+                completedAt: new Date(),
+                feedbackRequestSent: true // Allow rating logic to work for this job
             }
         });
 
@@ -288,6 +290,8 @@ export async function recordJobPayment(jobId: string, amount: number, method: st
             else if (method === 'POS') readableMethod = 'POS';
 
             const { generateInvoicePDF } = await import('@/lib/services/invoice-generator');
+
+            // Pass readable method
             const pdfData = await generateInvoicePDF(job.id, 'receipt', readableMethod);
 
             const { WhatsAppService } = await import('@/lib/api/evolution-whatsapp');
@@ -303,7 +307,10 @@ Thank you, ${job.customerName}! Your payment has been confirmed.
 
 📄 *Please see the attached Receipt.*
 
-Thank you for choosing ${job.client?.businessName || 'us'}!`;
+Thank you for choosing ${job.client?.businessName || 'us'}!
+
+⭐ *How was your service?*
+Reply with a number **1-5** to rate us, or reply with any feedback you have. we are here to help!`;
 
             await whatsapp.sendMedia(
                 job.customerPhone,
@@ -341,7 +348,7 @@ export async function getActiveJobs(clientId: string) {
         const jobs = await prisma.job.findMany({
             where: whereClause,
             orderBy: { createdAt: 'desc' },
-            include: { customer: true }
+            include: { customer: true, items: true }
         });
         return { success: true, data: jobs };
     } catch (error) {

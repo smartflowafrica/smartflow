@@ -364,6 +364,7 @@ export default function ClientDashboardPage() {
                         isOpen={activeModal === 'book_appointment' || activeModal === 'book_reservation'}
                         onClose={() => setActiveModal(null)}
                         terminology={config.terminology}
+                        isReservation={activeModal === 'book_reservation'}
                     />
                 </div>
             )

@@ -226,6 +226,9 @@ model Job {
   feedbackRating      Int?    // 1-5
   feedbackNotes       String?
   
+  // Inspection Data
+  inspectionData      Json?
+
   branchId      String?
   vehicleId     String?
   branch        Branch?      @relation(fields: [branchId], references: [id])

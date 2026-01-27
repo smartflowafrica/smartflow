@@ -35,6 +35,8 @@ export async function GET(request: Request) {
         const whatsapp = new WhatsAppService();
         let sentCount = 0;
 
+        /* FEEDBACK CRON DISABLED - REQUEST MOVED TO RECEIPT MESSAGE
+        /* FEEDBACK CRON DISABLED - MOVED TO RECEIPT
         for (const job of eligibleJobs) {
             // Send WhatsApp Request
             const message = `Hi ${job.customerName}! 👋\n\nThank you for choosing ${job.client.businessName}.\n\nHow would you rate your experience with your ${job.description} Service on a scale of 1 to 5? 🌟\n\n(Reply with a number 1-5)`;
@@ -58,6 +60,8 @@ export async function GET(request: Request) {
                 // Optionally mark as failed or just retry next time (leave false)
             }
         }
+        */
+        */
 
         return NextResponse.json({ success: true, processed: sentCount });
 

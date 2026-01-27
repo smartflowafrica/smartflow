@@ -146,18 +146,18 @@ export default function Header() {
           </div>
 
           {/* CTA Buttons */}
-          <div className="hidden lg:flex lg:flex-1 lg:justify-end lg:gap-x-4">
+          <div className="hidden lg:flex lg:flex-1 lg:justify-end lg:gap-x-4 items-center">
             <Link
-              href="/contact"
+              href="/login"
               className="text-sm font-semibold leading-6 text-gray-900 hover:text-primary transition-colors"
             >
-              Contact
+              Log in
             </Link>
             <Link
-              href="/demo"
+              href="/auth/signup"
               className="btn-primary text-sm py-2 px-6"
             >
-              Book Demo
+              Sign Up
             </Link>
           </div>
         </div>
@@ -245,18 +245,18 @@ export default function Header() {
                   </div>
                   <div className="py-6 space-y-4">
                     <Link
-                      href="/contact"
+                      href="/login"
                       className="btn-secondary text-center block w-full"
                       onClick={() => setMobileMenuOpen(false)}
                     >
-                      Contact
+                      Log in
                     </Link>
                     <Link
-                      href="/demo"
+                      href="/auth/signup"
                       className="btn-primary text-center block w-full"
                       onClick={() => setMobileMenuOpen(false)}
                     >
-                      Book Demo
+                      Sign Up
                     </Link>
                   </div>
                 </div>

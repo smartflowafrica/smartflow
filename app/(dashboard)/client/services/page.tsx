@@ -4,6 +4,9 @@ import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { Plus, Search, Edit2, Trash2, Tag, Clock } from 'lucide-react';
 import { toast } from 'sonner';
+import { useClient } from '@/hooks/useClient'; // Added
+import { BusinessTypeAdapter } from '@/components/client/BusinessTypeAdapter';
+import { BUSINESS_TYPES } from '@/lib/config/business-types';
 
 interface Service {
     id: string;
@@ -20,18 +23,26 @@ interface Service {
 
 export default function ServicesPage() {
     const { data: session } = useSession();
+    const { client } = useClient();
     const [services, setServices] = useState<Service[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingService, setEditingService] = useState<Service | null>(null);
 
+    // Get Terminology
+    const config = client?.businessType ? BUSINESS_TYPES[client.businessType] : BUSINESS_TYPES.OTHER;
+    const serviceLabel = config?.terminology?.service || 'Service';
+    const servicesLabel = config?.terminology?.services || 'Services';
+    const serviceCategories = config?.serviceCategories || ['General', 'Maintenance', 'Repair', 'Other'];
+
     // State for Images
     const [images, setImages] = useState<string[]>([]);
     const [isUploading, setIsUploading] = useState(false);
 
+    // ... (rest of state items same) ...
+
     // Initialize images when editing
-    // Initialize images
     useEffect(() => {
         if (editingService?.metadata?.images) {
             setImages(editingService.metadata.images);
@@ -172,7 +183,7 @@ export default function ServicesPage() {
 
             if (!res.ok) throw new Error('Failed to save service');
 
-            toast.success(editingService ? 'Service updated' : 'Service created');
+            toast.success(editingService ? `${serviceLabel} updated` : `${serviceLabel} created`);
             setIsModalOpen(false);
             setEditingService(null);
             fetchServices();
@@ -188,7 +199,7 @@ export default function ServicesPage() {
         try {
             const res = await fetch(`/api/services/${id}`, { method: 'DELETE' });
             if (!res.ok) throw new Error('Failed to delete');
-            toast.success('Service deleted');
+            toast.success(`${serviceLabel} deleted`);
             fetchServices();
         } catch (error) {
             toast.error('Failed to delete service');
@@ -204,8 +215,8 @@ export default function ServicesPage() {
         <div className="p-6 max-w-7xl mx-auto">
             <div className="flex justify-between items-center mb-8">
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-900">Services & Pricing</h1>
-                    <p className="text-slate-500">Manage your service offerings and prices</p>
+                    <h1 className="text-2xl font-bold text-slate-900">{servicesLabel} & Pricing</h1>
+                    <p className="text-slate-500">Manage your {servicesLabel.toLowerCase()} offerings and prices</p>
                 </div>
                 <button
                     onClick={() => {
@@ -215,7 +226,7 @@ export default function ServicesPage() {
                     className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 transition-colors"
                 >
                     <Plus size={20} />
-                    Add New Service
+                    Add New {serviceLabel}
                 </button>
             </div>
 
@@ -224,7 +235,7 @@ export default function ServicesPage() {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
                 <input
                     type="text"
-                    placeholder="Search services..."
+                    placeholder={`Search ${servicesLabel.toLowerCase()}...`}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20"
@@ -233,10 +244,10 @@ export default function ServicesPage() {
 
             {/* Services List */}
             {isLoading ? (
-                <div className="text-center py-12 text-slate-500">Loading services...</div>
+                <div className="text-center py-12 text-slate-500">Loading {servicesLabel.toLowerCase()}...</div>
             ) : filteredServices.length === 0 ? (
                 <div className="text-center py-12 bg-slate-50 rounded-xl border border-dashed border-slate-200">
-                    <p className="text-slate-500">No services found. Add your first service!</p>
+                    <p className="text-slate-500">No {servicesLabel.toLowerCase()} found. Add your first {serviceLabel.toLowerCase()}!</p>
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -290,14 +301,14 @@ export default function ServicesPage() {
                     <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
                         <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
                             <h2 className="font-bold text-lg">
-                                {editingService ? 'Edit Service' : 'Add New Service'}
+                                {editingService ? `Edit ${serviceLabel}` : `Add New ${serviceLabel}`}
                             </h2>
                             <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600">×</button>
                         </div>
 
                         <form onSubmit={handleSave} className="p-6 space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Service Name</label>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">{serviceLabel} Name</label>
                                 <input
                                     name="name"
                                     defaultValue={editingService?.name}
@@ -347,14 +358,12 @@ export default function ServicesPage() {
                                 <label className="block text-sm font-medium text-slate-700 mb-1">Category</label>
                                 <select
                                     name="category"
-                                    defaultValue={editingService?.category || 'General'}
+                                    defaultValue={editingService?.category || serviceCategories[0]}
                                     className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
                                 >
-                                    <option value="General">General</option>
-                                    <option value="Maintenance">Maintenance</option>
-                                    <option value="Repair">Repair</option>
-                                    <option value="Inspection">Inspection</option>
-                                    <option value="Other">Other</option>
+                                    {serviceCategories.map((cat) => (
+                                        <option key={cat} value={cat}>{cat}</option>
+                                    ))}
                                 </select>
                             </div>
 
@@ -446,7 +455,7 @@ export default function ServicesPage() {
                                     type="submit"
                                     className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
                                 >
-                                    Save Service
+                                    Save {serviceLabel}
                                 </button>
                             </div>
                         </form>

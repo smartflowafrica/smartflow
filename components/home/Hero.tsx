@@ -14,7 +14,7 @@ const heroData = {
     { value: "₦0", label: "Setup Commission" }
   ],
   cta: [
-    { text: "Get Started Free", type: "primary", link: "/demo" },
+    { text: "Get Started Free", type: "primary", link: "/auth/signup" },
     { text: "See How It Works", type: "secondary", link: "#how-it-works" }
   ]
 }
@@ -74,7 +74,7 @@ export default function Hero() {
             className="flex flex-col sm:flex-row gap-4 items-center mb-20"
           >
             <Link
-              href="/demo"
+              href="/auth/signup"
               className="btn-primary min-w-[160px] flex items-center justify-center gap-2 group"
             >
               Get Started Free

@@ -1,12 +1,15 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { toast } from 'sonner';
 
 export default function TenantsPage() {
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const filterId = searchParams.get('id');
+
     const [clients, setClients] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
@@ -28,6 +31,11 @@ export default function TenantsPage() {
         fetchClients();
     }, [router]);
 
+    // Apply Filter
+    const filteredClients = filterId
+        ? clients.filter(c => c.id === filterId)
+        : clients;
+
     return (
         <div className="space-y-6 p-6">
             <div className="flex justify-between items-center">
@@ -46,21 +54,29 @@ export default function TenantsPage() {
                 </Link>
             </div>
 
+            {/* Active Filter Indicator */}
+            {filterId && (
+                <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-lg flex items-center justify-between">
+                    <span className="text-sm font-medium">Viewing specific client (ID: {filterId})</span>
+                    <Link href="/admin/tenants" className="text-sm hover:underline">Clear Filter</Link>
+                </div>
+            )}
+
             {isLoading ? (
                 <div className="text-center py-12">
                     <div className="animate-spin w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full mx-auto mb-4"></div>
                     <p className="text-slate-500">Loading tenants...</p>
                 </div>
-            ) : clients.length === 0 ? (
+            ) : filteredClients.length === 0 ? (
                 <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
                     <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
                         <svg className="w-8 h-8 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                         </svg>
                     </div>
-                    <h3 className="text-lg font-semibold text-slate-900 mb-2">No Tenants Yet</h3>
+                    <h3 className="text-lg font-semibold text-slate-900 mb-2">No Tenants Found</h3>
                     <p className="text-slate-500 mb-6 max-w-sm mx-auto">
-                        Get started by onboarding your first client to the platform.
+                        {filterId ? 'No client matches that ID.' : 'Get started by onboarding your first client.'}
                     </p>
                     <Link
                         href="/admin/onboarding"
@@ -84,7 +100,7 @@ export default function TenantsPage() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
-                                {clients.map((client) => (
+                                {filteredClients.map((client) => (
                                     <tr key={client.id} className="hover:bg-slate-50 transition">
                                         <td className="px-6 py-4">
                                             <div className="font-medium text-slate-900">{client.businessName}</div>

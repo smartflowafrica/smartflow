@@ -100,15 +100,50 @@ export class WhatsAppService {
         return await response.json();
     }
 
-    /**
-     * Deletes an instance (Logout/Reset)
-     */
     public async deleteInstance(): Promise<boolean> {
         const response = await fetch(`${this.apiUrl}/instance/delete/${this.instanceName}`, {
             method: 'DELETE',
             headers: { 'apikey': this.apiKey }
         });
         return response.ok;
+    }
+
+    /**
+     * Helper to check if instance is connected
+     * (Useful for UI or conditional logic)
+     */
+    public async isConnected(clientId?: string): Promise<boolean> {
+        try {
+            // If clientId is provided, we might want to lookup the instance name?
+            // For now, Single Tenant assumption per Class Instance or Env
+            // But if we want multi-tenant dynamic checks, we'd need to switch this.instanceName
+            // For now, let's just check the current instance configured in constructor.
+
+            const status = await this.getInstanceStatus();
+            return status?.instance?.state === 'open';
+        } catch (e) {
+            return false;
+        }
+    }
+
+    /**
+     * Fetches ALL instances for Admin Monitoring
+     */
+    public async fetchInstances(): Promise<any[]> {
+        // Evolution v1.8+ /instance/fetchInstances
+        const response = await fetch(`${this.apiUrl}/instance/fetchInstances`, {
+            method: 'GET',
+            headers: { 'apikey': this.apiKey }
+        });
+
+        if (!response.ok) {
+            console.error('Failed to fetch instances:', await response.text());
+            return [];
+        }
+
+        const data = await response.json();
+        // Evolution returns array of instance objects
+        return Array.isArray(data) ? data : [];
     }
 
     // --- MESSAGING ---
@@ -166,6 +201,24 @@ export class WhatsAppService {
 
         } catch (error: any) {
             console.error('Evolution Send Error:', error);
+
+            // Log to System Health
+            try {
+                // We need to dynamic import or use the instance available
+                // To avoid circular dep issues in some frameworks, we use the global prisma if available or import it at top
+                // Since this is a server-side class, standard import works.
+                await prisma.systemLog.create({
+                    data: {
+                        level: 'ERROR',
+                        message: `WhatsApp Send Failed: ${error.message || 'Unknown error'}`,
+                        clientId: clientId,
+                        metadata: { to, error: error.message }
+                    }
+                });
+            } catch (logError) {
+                console.error('Failed to log system error', logError);
+            }
+
             if (clientId) {
                 await prisma.message.create({
                     data: {

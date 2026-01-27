@@ -8,6 +8,9 @@ export const dynamic = 'force-dynamic'
 import { TrendingUp, TrendingDown, Activity, DollarSign, Users, Zap } from 'lucide-react'
 
 import prisma from '@/lib/prisma'
+import { WhatsAppMonitor } from '@/components/admin/WhatsAppMonitor';
+import { SystemHealthLogs } from '@/components/admin/SystemHealthLogs';
+import { RecentSignups } from '@/components/admin/RecentSignups';
 
 async function getStats() {
     try {
@@ -140,43 +143,24 @@ export default async function AdminDashboard() {
                 />
             </div>
 
-            {/* Recent Activity */}
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            {/* WhatsApp Monitor */}
+            <div className="w-full">
+                <WhatsAppMonitor />
+            </div>
+
+            {/* Logs & Signups Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[400px]">
+                <SystemHealthLogs />
+                <RecentSignups />
+            </div>
+
+            {/* Recent Activity (Legacy - Consider removing if Logs covers it, but keeping for now) */}
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden hidden">
                 <div className="p-6 border-b border-slate-200">
                     <h2 className="text-lg font-bold text-slate-900">Live System Activity</h2>
                     <p className="text-sm text-slate-500 mt-1">Real-time events from all clients</p>
                 </div>
-                <div className="p-8 text-center">
-                    {recentActivity.length === 0 ? (
-                        <div className="space-y-3">
-                            <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto">
-                                <Activity className="w-8 h-8 text-slate-400" />
-                            </div>
-                            <div>
-                                <h3 className="font-semibold text-slate-900">No Activity Yet</h3>
-                                <p className="text-sm text-slate-500 mt-1">
-                                    Activity will appear here once you add clients and they start using the system
-                                </p>
-                            </div>
-                        </div>
-                    ) : (
-                        <div className="divide-y divide-slate-100">
-                            {recentActivity.map((activity: any) => (
-                                <div key={activity.id} className="p-4 hover:bg-slate-50 transition-colors">
-                                    <div className="flex items-start gap-4">
-                                        <div className="w-2 h-2 rounded-full mt-2 bg-green-500 animate-pulse"></div>
-                                        <div className="flex-1">
-                                            <p className="text-sm text-slate-900">{activity.message}</p>
-                                            <p className="text-xs text-slate-500 mt-1">
-                                                {new Date(activity.timestamp).toLocaleString()}
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
+                {/* ... Hidden for now to favor System Health Logs ... */}
             </div>
 
             {/* Getting Started Guide */}

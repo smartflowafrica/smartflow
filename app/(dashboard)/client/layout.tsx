@@ -60,6 +60,10 @@ export default async function ClientLayout({
     // Show Role instead of generic 'Client Account'
     const displaySubtitle = staffRole === 'OWNER' ? (initialClient?.businessName || 'Business Owner') : `${staffRole} Account`;
 
+    // Business Logic Adapter
+    const { getBusinessTypeConfig } = await import('@/lib/config/business-types');
+    const config = getBusinessTypeConfig(initialClient?.businessType || 'AUTO_MECHANIC');
+
     return (
         <ClientProvider initialClient={initialClient}>
             <GlobalAlerts />
@@ -80,9 +84,13 @@ export default async function ClientLayout({
                             ) : (
                                 <>
                                     <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                                        <span className="text-white">S</span>
+                                        <span className="text-white">
+                                            {initialClient?.businessName
+                                                ? initialClient.businessName.charAt(0).toUpperCase()
+                                                : 'S'}
+                                        </span>
                                     </div>
-                                    SmartFlow
+                                    {initialClient?.businessName || 'SmartFlow'}
                                 </>
                             )}
                         </Link>
@@ -100,11 +108,11 @@ export default async function ClientLayout({
                         {isOwnerOrManager && (
                             <NavLink href="/client" icon={<LayoutDashboard size={20} />} label="Overview" />
                         )}
-                        <NavLink href="/client/jobs" icon={<Briefcase size={20} />} label="Jobs" />
-                        <NavLink href="/client/services" icon={<Tag size={20} />} label="Services" />
+                        <NavLink href="/client/jobs" icon={<Briefcase size={20} />} label={config.terminology.jobs} />
+                        <NavLink href="/client/services" icon={<Tag size={20} />} label={config.terminology.services} />
                         <InboxNavLink />
-                        <NavLink href="/client/appointments" icon={<Calendar size={20} />} label="Appointments" />
-                        <NavLink href="/client/customers" icon={<Users size={20} />} label="Customers" />
+                        <NavLink href="/client/appointments" icon={<Calendar size={20} />} label={config.terminology.calendarLabel || 'Calendar'} />
+                        <NavLink href="/client/customers" icon={<Users size={20} />} label={config.terminology.customers} />
                         <NavLink href="/client/inventory" icon={<Package size={20} />} label="Inventory" />
 
                         {isOwnerOrManager && (

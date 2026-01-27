@@ -4,8 +4,14 @@ import { useState, useEffect } from 'react';
 import { Plus, Calendar as CalendarIcon, Clock, User, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { AppointmentModal } from '@/components/client/AppointmentModal';
+import { useClient } from '@/hooks/useClient';
+import { getBusinessTypeConfig } from '@/lib/config/business-types';
 
 export default function AppointmentsPage() {
+    const { client } = useClient();
+    const config = client ? getBusinessTypeConfig(client.businessType) : null;
+    const isReservation = client?.businessType === 'RESTAURANT' || client?.businessType === 'HOTEL';
+
     const [appointments, setAppointments] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -70,19 +76,21 @@ export default function AppointmentsPage() {
                 isOpen={isModalOpen}
                 onClose={handleModalClose}
                 appointment={selectedAppointment}
+                terminology={config?.terminology}
+                isReservation={isReservation}
             />
 
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
                     <CalendarIcon className="w-6 h-6 text-blue-600" />
-                    Appointments
+                    {config?.terminology.calendarLabel || 'Appointments'}
                 </h1>
                 <button
                     onClick={() => setIsModalOpen(true)}
                     className="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 hover:bg-blue-700"
                 >
                     <Plus size={18} />
-                    New Appointment
+                    {isReservation ? 'New Reservation' : 'New Appointment'}
                 </button>
             </div>
 

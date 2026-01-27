@@ -32,6 +32,7 @@ export async function POST(request: Request) {
                 where: { id: clientId },
                 data: {
                     businessName: info?.name,
+                    businessType: info?.type,
                     ownerName: info?.owner,
                     phone: info?.phone,
                     address: info?.address || config?.address,
