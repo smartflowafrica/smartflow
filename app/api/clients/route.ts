@@ -123,6 +123,15 @@ export async function GET() {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
+        const user = await prisma.user.findUnique({
+            where: { email: session.user.email as string },
+            select: { role: true }
+        });
+
+        if (user?.role !== 'ADMIN') {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
+
         const clients = await prisma.client.findMany({
             include: {
                 sector: true,

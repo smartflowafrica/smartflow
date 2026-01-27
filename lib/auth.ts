@@ -14,50 +14,37 @@ export const authOptions: NextAuthOptions = {
                 password: { label: 'Password', type: 'password' }
             },
             async authorize(credentials) {
-                console.log('[NextAuth] Authorize called with email:', credentials?.email);
-
                 if (!credentials?.email || !credentials?.password) {
-                    console.log('[NextAuth] Missing credentials');
-                    throw new Error('Email and password are required');
+                    return null;
                 }
 
                 try {
-                    console.log('[NextAuth] Looking up user in database...');
+                    // Quick validation using Zod
+                    const { loginSchema } = await import('@/lib/validators/auth'); // Dynamic import to avoid circular dep if any
+                    const validation = loginSchema.safeParse(credentials);
+
+                    if (!validation.success) {
+                        return null; // Or throw specific error if NextAuth allows bubbling
+                    }
+
                     const user = await prisma.user.findUnique({
                         where: { email: credentials.email },
                         include: { client: true }
                     });
 
-                    console.log('[NextAuth] Database query complete');
-                    console.log('[NextAuth] User found:', user ? { id: user.id, email: user.email, role: user.role, hasPassword: !!user.password, passwordLength: user.password?.length } : 'NOT FOUND');
-
-                    if (!user) {
-                        console.log('[NextAuth] No user found with email:', credentials.email);
-                        throw new Error('Invalid credentials');
+                    if (!user || !user.password) {
+                        return null;
                     }
-
-                    if (!user.password) {
-                        console.log('[NextAuth] User has no password set');
-                        throw new Error('Invalid credentials');
-                    }
-
-                    console.log('[NextAuth] Comparing passwords...');
-                    console.log('[NextAuth] Input password length:', credentials.password.length);
-                    console.log('[NextAuth] Stored hash starts with:', user.password.substring(0, 10));
 
                     const isPasswordValid = await bcrypt.compare(
                         credentials.password,
                         user.password
                     );
 
-                    console.log('[NextAuth] Password valid:', isPasswordValid);
-
                     if (!isPasswordValid) {
-                        console.log('[NextAuth] Password comparison failed');
-                        throw new Error('Invalid credentials');
+                        return null;
                     }
 
-                    console.log('[NextAuth] Login successful for:', user.email);
                     return {
                         id: user.id,
                         email: user.email,
@@ -68,7 +55,7 @@ export const authOptions: NextAuthOptions = {
                     };
                 } catch (error) {
                     console.error('[NextAuth] Error in authorize:', error);
-                    throw error;
+                    return null;
                 }
             }
         })

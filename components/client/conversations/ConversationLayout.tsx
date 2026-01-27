@@ -19,7 +19,7 @@ export function ConversationLayout() {
             {/* Sidebar - List */}
             <div className={`w-full md:w-80 flex-shrink-0 ${selectedPhone ? 'hidden md:flex' : 'flex'}`}>
                 <ConversationList
-                    conversations={conversations}
+                    conversations={conversations as any}
                     selectedId={selectedPhone}
                     onSelect={setSelectedPhone}
                 />

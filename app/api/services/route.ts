@@ -126,15 +126,18 @@ export async function POST(request: Request) {
         }
 
         const body = await request.json();
-        const { name, description, price, duration, category, metadata, isActive, postToStatus, pricingRules, commitmentFee } = body;
 
-        if (!name) {
-            return NextResponse.json({ error: 'Name is required' }, { status: 400 });
+        // Validate input using Zod
+        const { serviceSchema } = await import('@/lib/validators/services');
+        const validation = serviceSchema.safeParse(body);
+
+        if (!validation.success) {
+            return NextResponse.json({ error: validation.error.message }, { status: 400 });
         }
 
-        if (price <= 0) {
-            return NextResponse.json({ error: 'Price must be positive' }, { status: 400 });
-        }
+        const { name, description, price, duration, category, metadata, isActive, postToStatus, pricingRules, commitmentFee } = validation.data;
+
+        // Validated by zod now (removed manual checks)
 
         const service = await prisma.service.create({
             data: {

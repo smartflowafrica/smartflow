@@ -149,11 +149,10 @@ Thank you for choosing ${job.client?.businessName || 'us'}!`;
                 }
             }
         }
-    }
 
-    return NextResponse.json({ received: true });
-} catch (error) {
-    console.error('Webhook Error:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
-}
+        return NextResponse.json({ received: true });
+    } catch (error) {
+        console.error('Webhook Error:', error);
+        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    }
 }

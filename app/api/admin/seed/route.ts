@@ -95,7 +95,7 @@ export async function GET() {
                         tagline: 'We fix cars right!',
                     }
                 },
-                user: {
+                users: {
                     create: {
                         email: chidiEmail,
                         name: 'Chidi Okafor',
@@ -148,7 +148,7 @@ export async function GET() {
                         tagline: 'Taste like home',
                     }
                 },
-                user: {
+                users: {
                     create: {
                         email: mamaEmail,
                         name: 'Ngozi Adeyemi',

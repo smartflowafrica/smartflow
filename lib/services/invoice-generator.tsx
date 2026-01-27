@@ -52,7 +52,7 @@ export async function generateInvoicePDF(jobId: string, type: DocType = 'invoice
         paymentLink: isReceipt ? (paymentMethod || 'PAID') : paymentLink,
         logoUrl: logoUrl || undefined,
         // @ts-ignore
-        bankDetails: job.client.branding?.bankDetails || undefined,
+        bankDetails: (job.client.branding?.bankDetails as any) || undefined,
         isReceipt: isReceipt,
         status: isReceipt ? 'PAID' : (job.paymentStatus || 'PENDING'),
         paymentMethod: paymentMethod

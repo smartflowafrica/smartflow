@@ -22,6 +22,11 @@ export async function GET(
             return NextResponse.json({ error: 'Job not found' }, { status: 404 });
         }
 
+        const clientId = (session.user as any).clientId;
+        if (clientId && job.clientId !== clientId) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
         return NextResponse.json(job);
     } catch (error) {
         console.error('Error fetching job:', error);
@@ -41,6 +46,22 @@ export async function PATCH(
 
         const body = await request.json();
         const { finalAmount, price, notes, description, priority, dueDate } = body;
+
+        const clientId = (session.user as any).clientId;
+
+        // Verify ownership
+        const existingJob = await prisma.job.findUnique({
+            where: { id: params.id },
+            select: { clientId: true }
+        });
+
+        if (!existingJob) {
+            return NextResponse.json({ error: 'Job not found' }, { status: 404 });
+        }
+
+        if (clientId && existingJob.clientId !== clientId) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
 
         const job = await prisma.job.update({
             where: { id: params.id },

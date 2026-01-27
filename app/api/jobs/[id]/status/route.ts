@@ -14,6 +14,21 @@ export async function PATCH(
         }
 
         const { status } = await request.json();
+        const clientId = (session.user as any).clientId;
+
+        // Verify ownership
+        const existingJob = await prisma.job.findUnique({
+            where: { id: params.id },
+            select: { clientId: true }
+        });
+
+        if (!existingJob) {
+            return NextResponse.json({ error: 'Job not found' }, { status: 404 });
+        }
+
+        if (clientId && existingJob.clientId !== clientId) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
 
         const job = await prisma.job.update({
             where: { id: params.id },

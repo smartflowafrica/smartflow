@@ -364,7 +364,7 @@ export class WhatsAppService {
     /**
      * Sends Media Message (Image) via Evolution API
      */
-    public async sendMedia(to: string, mediaUrl: string, caption?: string, clientId?: string, mediaType: 'image' | 'video' | 'document' = 'image'): Promise<any> {
+    public async sendMedia(to: string, mediaUrl: string, caption?: string, clientId?: string, mediaType: 'image' | 'video' | 'document' = 'image', fileName?: string): Promise<any> {
         const formattedTo = this.formatPhone(to);
         await this.checkRateLimit(formattedTo);
 
@@ -381,7 +381,7 @@ export class WhatsAppService {
                         mediatype: mediaType, // Dynamic type
                         media: mediaUrl,
                         caption: caption || '',
-                        fileName: mediaType === 'document' ? 'invoice.pdf' : undefined // Optional filename for docs
+                        fileName: fileName // Use provided filename or let API decide
                     },
                     options: { delay: 1200 }
                 })

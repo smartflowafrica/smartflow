@@ -35,32 +35,11 @@ export async function GET(request: Request) {
         const whatsapp = new WhatsAppService();
         let sentCount = 0;
 
-        /* FEEDBACK CRON DISABLED - REQUEST MOVED TO RECEIPT MESSAGE
-        /* FEEDBACK CRON DISABLED - MOVED TO RECEIPT
+        // FEEDBACK CRON DISABLED - REQUEST MOVED TO RECEIPT MESSAGE
+        /* 
         for (const job of eligibleJobs) {
-            // Send WhatsApp Request
-            const message = `Hi ${job.customerName}! 👋\n\nThank you for choosing ${job.client.businessName}.\n\nHow would you rate your experience with your ${job.description} Service on a scale of 1 to 5? 🌟\n\n(Reply with a number 1-5)`;
-
-            try {
-                // Use Client's WhatsApp instance if available
-                const instanceId = job.client.integrations?.whatsappInstanceId;
-                const clientWhatsapp = instanceId ? new WhatsAppService(instanceId) : whatsapp;
-
-                await clientWhatsapp.sendMessage(job.customerPhone, message, job.clientId);
-
-                // Mark as Sent
-                await prisma.job.update({
-                    where: { id: job.id },
-                    data: { feedbackRequestSent: true }
-                });
-                sentCount++;
-
-            } catch (error) {
-                console.error(`Failed to send feedback request for Job ${job.id}:`, error);
-                // Optionally mark as failed or just retry next time (leave false)
-            }
+            // ... (Code Disabled)
         }
-        */
         */
 
         return NextResponse.json({ success: true, processed: sentCount });

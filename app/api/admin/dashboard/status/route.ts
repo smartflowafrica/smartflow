@@ -58,12 +58,7 @@ export async function GET() {
             },
             take: 10,
             orderBy: { timestamp: 'desc' },
-            include: {
-                // If SystemLog had a relation to Client, we'd include it. 
-                // Currently checks schema: SystemLog has clientId string but no relation defined in schema shown previously?
-                // Let's check schema snippet again. The schema showed `clientId String?` and NO relation.
-                // So we'll validly just fetch the basic log.
-            }
+            // Removed empty include
         });
 
         // Enhance logs with client names if possible

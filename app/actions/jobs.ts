@@ -25,10 +25,23 @@ export interface CreateJobParams {
     vehicleId?: string;
 }
 
-export async function createJob(params: CreateJobParams) {
+import { createJobSchema } from '@/lib/validators/jobs';
+
+export async function createJob(rawParams: CreateJobParams) {
     try {
+        const validation = createJobSchema.safeParse(rawParams);
+        if (!validation.success) {
+            return { success: false, error: validation.error.message }; // Return first error message or formatted string
+        }
+        const params = validation.data;
+
         const user = await getCurrentUser();
-        if (!user) return { success: false, error: 'Unauthorized' };
+        if (!user || !(user as any).clientId) return { success: false, error: 'Unauthorized' };
+
+        // Enforce tenancy
+        if (params.clientId !== (user as any).clientId) {
+            return { success: false, error: 'Unauthorized Client Access' };
+        }
 
         const branchId = await getCurrentBranchId();
 
@@ -127,7 +140,17 @@ We'll keep you updated on the progress. Thank you for choosing us! 🙏`;
 export async function updateJobStatus(jobId: string, status: string) {
     try {
         const user = await getCurrentUser();
-        if (!user) return { success: false, error: 'Unauthorized' };
+        if (!user || !(user as any).clientId) return { success: false, error: 'Unauthorized' };
+
+        // Verify ownership before update
+        const jobCheck = await prisma.job.findUnique({
+            where: { id: jobId },
+            select: { clientId: true }
+        });
+
+        if (!jobCheck || jobCheck.clientId !== (user as any).clientId) {
+            return { success: false, error: 'Job not found or unauthorized' };
+        }
 
         // Handle Stock Deduction on Completion
         let stockDeducted = false;
@@ -219,6 +242,12 @@ Please visit us at your earliest convenience to collect your vehicle. Thank you 
 
 export async function getClientJobs(clientId: string) {
     try {
+        const user = await getCurrentUser();
+        // Cast to any to access clientId as it's not in the default type but verified to exist at runtime
+        if (!user || ((user as any).clientId && (user as any).clientId !== clientId)) {
+            return { success: false, error: 'Unauthorized' };
+        }
+
         const branchId = await getCurrentBranchId();
 
         const whereClause: any = { clientId };
@@ -251,6 +280,10 @@ export async function recordJobPayment(jobId: string, amount: number, method: st
             where: { id: jobId },
             include: { client: { select: { businessName: true } } }
         });
+
+        if (!job || ((user as any).clientId && job.clientId !== (user as any).clientId)) {
+            return { success: false, error: 'Job not found or unauthorized' };
+        }
 
         if (!job) return { success: false, error: 'Job not found' };
 
@@ -335,6 +368,12 @@ Reply with a number **1-5** to rate us, or reply with any feedback you have. we 
 
 export async function getActiveJobs(clientId: string) {
     try {
+        const user = await getCurrentUser();
+        // Cast to any to access clientId
+        if (!user || ((user as any).clientId && (user as any).clientId !== clientId)) {
+            return { success: false, error: 'Unauthorized' };
+        }
+
         const branchId = await getCurrentBranchId();
 
         const whereClause: any = {

@@ -22,6 +22,11 @@ export default function LoginPage() {
                 redirect: false
             });
 
+            if (result?.status === 429) {
+                toast.error('Too many attempts. Please try again in a minute.');
+                return;
+            }
+
             if (result?.error) {
                 toast.error('Invalid credentials');
                 return;
@@ -33,9 +38,14 @@ export default function LoginPage() {
             router.push('/client');
             router.refresh();
 
-        } catch (error) {
-            toast.error('An error occurred');
-            console.error(error);
+        } catch (error: any) {
+            // If rate limit causes a throw (depending on NextAuth version/client behavior)
+            if (error?.status === 429 || error?.toString().includes('Too Many Login Attempts')) {
+                toast.error('Too many attempts. Please try again in 1 minute.');
+            } else {
+                toast.error('An error occurred. Please try again.');
+                console.error(error);
+            }
         } finally {
             setIsLoading(false);
         }

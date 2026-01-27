@@ -22,7 +22,7 @@ interface Product {
 
 export default function InventoryPage() {
     const { data: session } = useSession();
-    const canManageInventory = session?.user?.staffRole === 'OWNER' || session?.user?.staffRole === 'MANAGER';
+    const canManageInventory = (session?.user as any)?.staffRole === 'OWNER' || (session?.user as any)?.staffRole === 'MANAGER';
 
     const [products, setProducts] = useState<Product[]>([]);
     const [isLoading, setIsLoading] = useState(true);

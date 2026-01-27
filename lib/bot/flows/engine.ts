@@ -121,7 +121,7 @@ export class FlowEngine {
             data: {
                 metadata: {
                     flowState: state
-                }
+                } as any
             }
         });
     }

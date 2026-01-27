@@ -23,6 +23,11 @@ export async function POST(
             return NextResponse.json({ error: 'Job not found' }, { status: 404 });
         }
 
+        const clientId = (session.user as any).clientId;
+        if (clientId && job.clientId !== clientId) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
         // Update job to ready status
         await prisma.job.update({
             where: { id: params.id },

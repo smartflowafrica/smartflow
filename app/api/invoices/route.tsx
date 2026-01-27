@@ -67,7 +67,7 @@ export async function POST(request: Request) {
             paymentLink: paymentLink,
             logoUrl: logoUrl || undefined,
             // @ts-ignore
-            bankDetails: job.client.branding?.bankDetails || undefined
+            bankDetails: (job.client.branding?.bankDetails as any) || undefined
         };
 
         // 1. Render PDF to Buffer

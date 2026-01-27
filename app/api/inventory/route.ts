@@ -9,7 +9,16 @@ export async function POST(request: Request) {
         if (!session?.user?.email) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
         const body = await request.json();
-        const { name, sku, price, cost, quantity, lowStockThreshold, category } = body;
+
+        // Validate input using Zod
+        const { productSchema } = await import('@/lib/validators/inventory');
+        const validation = productSchema.safeParse(body);
+
+        if (!validation.success) {
+            return NextResponse.json({ error: validation.error.message }, { status: 400 });
+        }
+
+        const { name, sku, price, cost, quantity, lowStockThreshold, category } = validation.data;
 
         const user = await prisma.user.findUnique({
             where: { email: session.user.email }
@@ -20,13 +29,13 @@ export async function POST(request: Request) {
         const product = await prisma.product.create({
             data: {
                 clientId: user.clientId,
-                name,
-                sku,
-                price: parseFloat(price),
-                cost: parseFloat(cost || 0),
-                quantity: parseInt(quantity || 0),
-                lowStockThreshold: parseInt(lowStockThreshold || 5),
-                category
+                name: name,
+                sku: sku,
+                price: price,
+                cost: cost,
+                quantity: quantity,
+                lowStockThreshold: lowStockThreshold,
+                category: category
             }
         });
 

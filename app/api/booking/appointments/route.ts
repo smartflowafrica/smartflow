@@ -59,7 +59,16 @@ export async function POST(request: Request) {
         if (!dbUser?.client) return NextResponse.json({ error: 'Client not found' }, { status: 404 });
 
         const body = await request.json();
-        const { customerId, serviceId, date, notes, branchId } = body;
+
+        // Validate input
+        const { appointmentSchema } = await import('@/lib/validators/booking');
+        const validation = appointmentSchema.safeParse(body);
+
+        if (!validation.success) {
+            return NextResponse.json({ error: validation.error.message }, { status: 400 });
+        }
+
+        const { customerId, serviceId, date, notes, branchId, customerPhone, customerName } = validation.data;
 
         // Fetch Service for details
         const service = await prisma.service.findUnique({ where: { id: serviceId } });
@@ -84,19 +93,20 @@ export async function POST(request: Request) {
         });
 
         // Send WhatsApp Notification (Async - do not block response)
+        const clientContext = dbUser.client; // Capture non-null reference for closure
         (async () => {
             try {
                 const link = generateGoogleCalendarLink({
-                    title: `Appt: ${service.name} @ ${dbUser.client.businessName}`,
+                    title: `Appt: ${service.name} @ ${clientContext.businessName}`,
                     description: `Service: ${service.name}\nNotes: ${notes || 'None'}\n\nBooked via SmartFlow Africa`,
-                    location: dbUser.client.address || '',
+                    location: clientContext.address || '',
                     startTime,
                     endTime
                 });
 
-                const message = `✅ *Appointment Confirmed!*\n\n📅 *Date:* ${startTime.toLocaleDateString()}\n⏰ *Time:* ${startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}\n✂️ *Service:* ${service.name}\n📍 *Location:* ${dbUser.client.address || 'Business Location'}\n\nTap to add to Google Calendar:\n${link}`;
+                const message = `✅ *Appointment Confirmed!*\n\n📅 *Date:* ${startTime.toLocaleDateString()}\n⏰ *Time:* ${startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}\n✂️ *Service:* ${service.name}\n📍 *Location:* ${clientContext.address || 'Business Location'}\n\nTap to add to Google Calendar:\n${link}`;
 
-                await whatsapp.sendMessage(body.customerPhone, message, dbUser.client.id);
+                await whatsapp.sendMessage(customerPhone, message, clientContext.id);
             } catch (err) {
                 console.error("Failed to send appointment notification", err);
             }

@@ -7833,3 +7833,28 @@
   "apikey": "D9696C91-7B29-43DB-BDAE-5B94C750FC4B"
 }
 ---
+{
+  "event": "messages.upsert",
+  "instance": "SmartFlowMain",
+  "data": {
+    "key": {
+      "remoteJid": "174221137301742@lid",
+      "fromMe": true,
+      "id": "A5750617AFB7CEFD3AE7C3ED11790483"
+    },
+    "pushName": "Eventplugng",
+    "message": {
+      "conversation": "09129200018"
+    },
+    "messageType": "conversation",
+    "messageTimestamp": 1769523975,
+    "owner": "SmartFlowMain",
+    "source": "android"
+  },
+  "destination": "http://host.docker.internal:3000/api/webhooks/whatsapp",
+  "date_time": "2026-01-27T12:24:42.399Z",
+  "sender": "2349113624251@s.whatsapp.net",
+  "server_url": "http://localhost:8080",
+  "apikey": "D9696C91-7B29-43DB-BDAE-5B94C750FC4B"
+}
+---

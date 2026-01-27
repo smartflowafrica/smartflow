@@ -19,6 +19,16 @@ export async function PUT(
         const body = await request.json();
         const { name, sku, price, cost, quantity, lowStockThreshold, category } = body;
 
+        // Verify ownership
+        const existingProduct = await prisma.product.findUnique({
+            where: { id: params.id },
+            select: { clientId: true }
+        });
+
+        if (!existingProduct || existingProduct.clientId !== (session.user as any).clientId) {
+            return NextResponse.json({ error: 'Product not found or unauthorized' }, { status: 404 });
+        }
+
         const product = await prisma.product.update({
             where: { id: params.id },
             data: {
@@ -50,6 +60,16 @@ export async function DELETE(
         const userRole = (session.user as any).staffRole;
         if (userRole !== 'OWNER' && userRole !== 'MANAGER') {
             return NextResponse.json({ error: 'Permission denied. Manager or Owner access required.' }, { status: 403 });
+        }
+
+        // Verify ownership
+        const existingProduct = await prisma.product.findUnique({
+            where: { id: params.id },
+            select: { clientId: true }
+        });
+
+        if (!existingProduct || existingProduct.clientId !== (session.user as any).clientId) {
+            return NextResponse.json({ error: 'Product not found or unauthorized' }, { status: 404 });
         }
 
         // Soft delete

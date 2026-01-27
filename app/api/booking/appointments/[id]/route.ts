@@ -58,22 +58,23 @@ export async function PUT(
         });
 
         // 2. Notify Customer
+        const clientContext = dbUser.client;
         (async () => {
             try {
                 const service = existingAppt.service;
                 const endTime = new Date(startTime.getTime() + (service.duration || 60) * 60000);
 
                 const link = generateGoogleCalendarLink({
-                    title: `Rescheduled: ${service.name} @ ${dbUser.client.businessName}`,
+                    title: `Rescheduled: ${service.name} @ ${clientContext.businessName}`,
                     description: `Service: ${service.name}\nNotes: ${notes || existingAppt.notes || 'None'}\n\nRescheduled via SmartFlow Africa`,
-                    location: dbUser.client.address || '',
+                    location: clientContext.address || '',
                     startTime,
                     endTime
                 });
 
                 const message = `🔄 *Appointment Rescheduled*\n\nYour appointment has been updated.\n\n📅 *New Date:* ${startTime.toLocaleDateString()}\n⏰ *New Time:* ${startTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}\n✂️ *Service:* ${service.name}\n\nTap to update Google Calendar:\n${link}`;
 
-                await whatsapp.sendMessage(existingAppt.customerPhone, message, dbUser.client.id);
+                await whatsapp.sendMessage(existingAppt.customerPhone, message, clientContext.id);
             } catch (err) {
                 console.error("Failed to send reschedule notification", err);
             }

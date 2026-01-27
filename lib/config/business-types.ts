@@ -49,8 +49,8 @@ export const BUSINESS_TYPES: Record<string, BusinessTypeConfig> = {
         name: 'Auto Mechanic Shop',
         icon: '🔧',
         terminology: {
-            job: 'Car',
-            jobs: 'Cars',
+            job: 'Job',
+            jobs: 'Jobs',
             customer: 'Customer',
             customers: 'Customers',
             service: 'Service',
