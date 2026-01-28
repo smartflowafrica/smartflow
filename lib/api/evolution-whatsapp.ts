@@ -60,11 +60,26 @@ export class WhatsAppService {
 
         if (!response.ok) {
             const errorText = await response.text();
-            // Handle "Already Exists" gracefully
             if (response.status === 403 && errorText.includes('already in use')) {
-                console.log(`[WhatsAppService] Instance ${instanceName} exists. Configuring connection...`);
-                // If it exists, try to get the connection/QR code
-                return this.connectInstance();
+                console.log(`[WhatsAppService] Instance ${instanceName} exists. Checking status...`);
+
+                try {
+                    const status = await this.getInstanceStatus();
+                    if (status?.instance?.state === 'open') {
+                        console.log('[WhatsAppService] Instance is already connected.');
+                        return { instance: { state: 'open', status: 'connected' } };
+                    }
+
+                    console.log('[WhatsAppService] Instance exists but NOT connected. Deleting and Re-creating...');
+                    await this.deleteInstance();
+                    // Retry creation (one level deep)
+                    return await this.createInstance(instanceName, integrationId);
+
+                } catch (retryError) {
+                    console.error('[WhatsAppService] Recovery failed:', retryError);
+                    // Fallback to connect to at least show something, or throw
+                    return this.connectInstance();
+                }
             }
             throw new Error(`Failed to create instance: ${errorText}`);
         }
