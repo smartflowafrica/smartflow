@@ -30,7 +30,7 @@ version: '3.3'
 services:
   evolution-api:
     container_name: evolution_api
-    image: evolutionapi/evolution-api:v2.2.2
+    image: atendai/evolution-api:v2.2.2
     restart: always
     ports:
       - "8081:8080"
