@@ -30,7 +30,7 @@ version: '3.3'
 services:
   evolution-api:
     container_name: evolution_api
-    image: attosol/evolution-api:v1.8.2
+    image: evolutionapi/evolution-api:v2.2.2
     restart: always
     ports:
       - "8081:8080"
