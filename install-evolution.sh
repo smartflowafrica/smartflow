@@ -40,7 +40,7 @@ services:
       - LOG_LEVEL=ERROR
       - DEL_INSTANCE=false
       - DATABASE_PROVIDER=postgresql
-      - DATABASE_CONNECTION_URI=postgresql://postgres:Murewa95159%23@db.ykjxkxyqrrvphlghzgxl.supabase.co:5432/postgres
+      - DATABASE_CONNECTION_URI=postgresql://postgres.ykjxkxyqrrvphlghzgxl:Murewa95159%23@aws-1-eu-west-1.pooler.supabase.com:5432/postgres
       - DATABASE_CLIENT_NAME=evolution_v1
       - AUTHENTICATION_API_KEY=44289315-9C0C-4318-825B-60C7E9A34567
       - CACHE_REDIS_ENABLED=true
