@@ -59,7 +59,14 @@ export class WhatsAppService {
         });
 
         if (!response.ok) {
-            throw new Error(`Failed to create instance: ${await response.text()}`);
+            const errorText = await response.text();
+            // Handle "Already Exists" gracefully
+            if (response.status === 403 && errorText.includes('already in use')) {
+                console.log(`[WhatsAppService] Instance ${instanceName} exists. Configuring connection...`);
+                // If it exists, try to get the connection/QR code
+                return this.connectInstance();
+            }
+            throw new Error(`Failed to create instance: ${errorText}`);
         }
 
         return await response.json();
