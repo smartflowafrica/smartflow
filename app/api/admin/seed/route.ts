@@ -21,7 +21,10 @@ export async function GET() {
 
         const adminDb = await prisma.user.upsert({
             where: { email: adminEmail },
-            update: {},
+            update: {
+                password: hashedPassword,
+                role: 'ADMIN',
+            },
             create: {
                 email: adminEmail,
                 name: 'Super Admin',
@@ -40,7 +43,10 @@ export async function GET() {
 
         const chidiAuto = await prisma.client.upsert({
             where: { email: chidiEmail },
-            update: {},
+            update: {
+                // Determine if we should update other fields, for now just ensure access
+                // users relation update is separate
+            },
             create: {
                 businessName: 'Chidi Auto Repairs',
                 businessType: BusinessType.AUTO_MECHANIC,
@@ -115,6 +121,9 @@ export async function GET() {
                         name: 'Ngozi Adeyemi',
                         password: mamaPassword,
                         role: 'CLIENT'
+                    },
+                    update: {
+                        password: mamaPassword,
                     }
                 }
             }
