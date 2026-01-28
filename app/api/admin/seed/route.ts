@@ -2,14 +2,8 @@ import { NextResponse } from 'next/server';
 import { PrismaClient, BusinessType, PlanTier } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
-// Forces the use of the working connection string
-const prisma = new PrismaClient({
-    datasources: {
-        db: {
-            url: "postgresql://postgres.ykjxkxyqrrvphlghzgxl:Murewa95159%23@aws-1-eu-west-1.pooler.supabase.com:6543/postgres?pgbouncer=true"
-        }
-    }
-});
+// Initialize Prisma
+const prisma = new PrismaClient();
 
 export async function GET() {
     try {
