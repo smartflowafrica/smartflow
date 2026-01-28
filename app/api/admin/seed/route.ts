@@ -67,15 +67,24 @@ export async function GET() {
                         font: 'Inter',
                         tagline: 'We fix cars right!',
                     }
-                },
-                users: {
-                    create: {
-                        email: chidiEmail,
-                        name: 'Chidi Okafor',
-                        password: chidiPassword,
-                        role: 'CLIENT'
-                    }
                 }
+            }
+        });
+
+        // Upsert Chidi User explicitly to ensure password update
+        await prisma.user.upsert({
+            where: { email: chidiEmail },
+            update: {
+                password: chidiPassword,
+                role: 'CLIENT',
+                clientId: chidiAuto.id
+            },
+            create: {
+                email: chidiEmail,
+                name: 'Chidi Okafor',
+                password: chidiPassword,
+                role: 'CLIENT',
+                clientId: chidiAuto.id
             }
         });
         results.push(`Client: Chidi Auto Created`);
@@ -114,18 +123,24 @@ export async function GET() {
                         font: 'Poppins',
                         tagline: 'Taste like home',
                     }
-                },
-                users: {
-                    create: {
-                        email: mamaEmail,
-                        name: 'Ngozi Adeyemi',
-                        password: mamaPassword,
-                        role: 'CLIENT'
-                    },
-                    update: {
-                        password: mamaPassword,
-                    }
                 }
+            }
+        });
+
+        // Upsert Mama User explicitly
+        await prisma.user.upsert({
+            where: { email: mamaEmail },
+            update: {
+                password: mamaPassword,
+                role: 'CLIENT',
+                clientId: mamaKitchen.id,
+            },
+            create: {
+                email: mamaEmail,
+                name: 'Ngozi Adeyemi',
+                password: mamaPassword,
+                role: 'CLIENT',
+                clientId: mamaKitchen.id
             }
         });
 
