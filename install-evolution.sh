@@ -43,7 +43,7 @@ services:
       - DATABASE_CONNECTION_URI=postgresql://evolution:evolutionpass@postgres:5432/evolution?schema=public
       - DATABASE_CLIENT_NAME=evolution_local
       - AUTHENTICATION_API_KEY=44289315-9C0C-4318-825B-60C7E9A34567
-      - CACHE_REDIS_ENABLED=true
+      - CACHE_REDIS_ENABLED=false
       - CACHE_REDIS_URI=redis://redis:6379/0
     depends_on:
       - redis
