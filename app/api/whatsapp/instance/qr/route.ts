@@ -22,6 +22,7 @@ export async function GET(request: Request) {
 
         // Fetch QR Code / Connection Data
         const data = await whatsapp.connectInstance();
+        console.log('[API] QR Data Received:', JSON.stringify(data, null, 2));
 
         // Evolution v1.8 usually returns { base64: "...", code: "..." }
         // If connected, it might return { instance: ..., status: "open" } without base64
