@@ -140,6 +140,13 @@ export default function WhatsAppConnect({ initialStatus = 'disconnected' }: What
                         This allows SmartFlow to send invoices, reminders, and reply to customers automatically.
                     </p>
 
+                    <div className="flex items-center gap-2 mb-6">
+                        <div className="px-3 py-1 bg-slate-100 border border-slate-200 rounded-full flex items-center gap-2 w-fit">
+                            <div className="w-2 h-2 rounded-full bg-slate-400" />
+                            <span className="text-xs font-medium text-slate-600 uppercase tracking-wide">Not Connected</span>
+                        </div>
+                    </div>
+
                     {!qrCode && (
                         <button
                             onClick={handleConnect}
