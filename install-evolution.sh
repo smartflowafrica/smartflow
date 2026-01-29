@@ -36,18 +36,25 @@ services:
       - "8081:8080"
     environment:
       - SERVER_URL=https://smartflowafrica.com/api/evolution
-      - DOCKER_ENV=true
-      - LOG_LEVEL=ERROR
-      - DEL_INSTANCE=false
-      - DATABASE_PROVIDER=postgresql
-      - DATABASE_CONNECTION_URI=postgresql://evolution:evolutionpass@postgres:5432/evolution?schema=public
-      - DATABASE_CLIENT_NAME=evolution_local
       - AUTHENTICATION_API_KEY=44289315-9C0C-4318-825B-60C7E9A34567
-      - CACHE_REDIS_ENABLED=false
-      - CACHE_REDIS_URI=redis://redis:6379/0
+      - AUTHENTICATION_EXPOSE_IN_FETCH_INSTANCES=true
+      - STORE_MESSAGES=true
+      - STORE_MESSAGE_UP=true
+      - STORE_CONTACTS=true
+      - STORE_CHATS=true
+      - REDIS_ENABLED=true
+      - REDIS_URI=redis://redis:6379
+      - CACHE_REDIS_ENABLED=true
+      - CACHE_REDIS_URI=redis://redis:6379
+      - DEL_INSTANCE=false
+      - QRCODE_LIMIT=30
+      - LOG_LEVEL=ERROR
+      - LOG_BAILEYS=error
+    volumes:
+      - evolution_instances:/evolution/instances
+      - evolution_store:/evolution/store
     depends_on:
       - redis
-      - postgres
 
   redis:
     image: redis:alpine
@@ -55,19 +62,10 @@ services:
     volumes:
       - redis_data:/data
 
-  postgres:
-    image: postgres:15-alpine
-    restart: always
-    environment:
-      - POSTGRES_USER=evolution
-      - POSTGRES_PASSWORD=evolutionpass
-      - POSTGRES_DB=evolution
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-
 volumes:
   redis_data:
-  postgres_data:
+  evolution_instances:
+  evolution_store:
 EOT
 
 # 3. Start Services
