@@ -15,6 +15,23 @@ export default function WhatsAppConnect({ initialStatus = 'disconnected' }: What
     const [loading, setLoading] = useState(false);
     const [polling, setPolling] = useState(false);
 
+    // Check status on mount
+    useEffect(() => {
+        const checkStatus = async () => {
+            try {
+                const res = await fetch('/api/whatsapp/instance/status');
+                const data = await res.json();
+                if (data.state === 'open') {
+                    setStatus('connected');
+                }
+            } catch (error) {
+                console.error('Failed to check status', error);
+            }
+        };
+
+        checkStatus();
+    }, []);
+
     // Poll for status when scanning
     useEffect(() => {
         let interval: NodeJS.Timeout;
