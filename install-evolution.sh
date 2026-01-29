@@ -40,13 +40,14 @@ services:
       - LOG_LEVEL=ERROR
       - DEL_INSTANCE=false
       - DATABASE_PROVIDER=postgresql
-      - DATABASE_CONNECTION_URI=postgresql://postgres.ykjxkxyqrrvphlghzgxl:Murewa95159%23@aws-1-eu-west-1.pooler.supabase.com:5432/postgres?schema=evolution
-      - DATABASE_CLIENT_NAME=evolution_v1
+      - DATABASE_CONNECTION_URI=postgresql://evolution:evolutionpass@postgres:5432/evolution?schema=public
+      - DATABASE_CLIENT_NAME=evolution_local
       - AUTHENTICATION_API_KEY=44289315-9C0C-4318-825B-60C7E9A34567
       - CACHE_REDIS_ENABLED=true
       - CACHE_REDIS_URI=redis://redis:6379/0
     depends_on:
       - redis
+      - postgres
 
   redis:
     image: redis:alpine
@@ -54,8 +55,19 @@ services:
     volumes:
       - redis_data:/data
 
+  postgres:
+    image: postgres:15-alpine
+    restart: always
+    environment:
+      - POSTGRES_USER=evolution
+      - POSTGRES_PASSWORD=evolutionpass
+      - POSTGRES_DB=evolution
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
 volumes:
   redis_data:
+  postgres_data:
 EOT
 
 # 3. Start Services
