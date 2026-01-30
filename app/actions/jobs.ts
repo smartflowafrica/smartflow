@@ -222,6 +222,7 @@ Please visit us at your earliest convenience to collect your vehicle. Thank you 
                     readyMessage,
                     job.clientId,
                     'document',
+                    'invoice.pdf'
                 );
 
             } catch (wsError) {
@@ -350,7 +351,8 @@ Reply with a number **1-5** to rate us, or reply with any feedback you have. we 
                 pdfData.base64,
                 receiptMessage,
                 job.clientId,
-                'document'
+                'document',
+                'receipt.pdf'
             );
         } catch (wsError) {
             console.error('WhatsApp notification failed (manual payment):', wsError);
