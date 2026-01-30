@@ -333,8 +333,9 @@ export class WhatsAppService {
                 cleanFrom = rawFrom.split('@')[0];
                 formattedFrom = '+' + cleanFrom;
             } else if (rawFrom.includes('@lid')) {
-                // Keep LID as is for routing, but we might want to flag it
-                formattedFrom = rawFrom;
+                // Keep LID as is for routing, but force remove '+' if present
+                formattedFrom = rawFrom.replace(/^\+/, '');
+                console.log(`[Webhook] LID Detected: ${formattedFrom}`);
             } else {
                 // Fallback
                 cleanFrom = rawFrom.replace(/\D/g, '');
