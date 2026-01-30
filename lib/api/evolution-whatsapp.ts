@@ -321,8 +321,23 @@ export class WhatsAppService {
                 return null;
             }
 
-            const rawFrom = msgData.key.remoteJid; // e.g., 2348012345678@s.whatsapp.net
-            const cleanFrom = rawFrom.split('@')[0]; // 2348012345678
+            const rawFrom = msgData.key.remoteJid; // e.g., 2348012345678@s.whatsapp.net OR 174...@lid
+
+            // Custom cleanup: If it's a standard number, strip domain. If LID, keep full.
+            let cleanFrom = rawFrom;
+            let formattedFrom = rawFrom;
+
+            if (rawFrom.includes('@s.whatsapp.net')) {
+                cleanFrom = rawFrom.split('@')[0];
+                formattedFrom = '+' + cleanFrom;
+            } else if (rawFrom.includes('@lid')) {
+                // Keep LID as is for routing, but we might want to flag it
+                formattedFrom = rawFrom;
+            } else {
+                // Fallback
+                cleanFrom = rawFrom.replace(/\D/g, '');
+                formattedFrom = '+' + cleanFrom;
+            }
 
             // Extract text message (handle conversation vs extendedTextMessage)
             let messageBody = '';
