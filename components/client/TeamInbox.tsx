@@ -168,6 +168,13 @@ export default function TeamInbox() {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
 
+    // Request Notification Permission on mount
+    useEffect(() => {
+        if ('Notification' in window && Notification.permission !== 'granted') {
+            Notification.requestPermission();
+        }
+    }, []);
+
     // Track previous 'Needs Human' count to trigger sound
     const prevNeedsHumanRef = useRef<Set<string>>(new Set());
 
@@ -185,8 +192,30 @@ export default function TeamInbox() {
 
         if (hasNewRequest) {
             try {
+                // 1. Audio Alert
                 const audio = new Audio(NOTIFICATION_SOUND);
                 audio.play().catch(e => console.error('Audio play failed', e));
+
+                // 2. System Notification (background support)
+                if ('Notification' in window && Notification.permission === 'granted') {
+                    new Notification('Action Required', {
+                        body: 'A customer is waiting for a human agent',
+                        tag: 'needs-human'
+                    });
+                }
+
+                // 3. Page Title Flashing
+                const originalTitle = document.title;
+                let flashCount = 0;
+                const flashInterval = setInterval(() => {
+                    document.title = flashCount % 2 === 0 ? '🔴 ACTION REQUIRED' : originalTitle;
+                    flashCount++;
+                    if (flashCount > 10) {
+                        clearInterval(flashInterval);
+                        document.title = originalTitle;
+                    }
+                }, 1000);
+
                 toast('New Customer Request', {
                     description: 'A customer is waiting for a human agent.',
                     action: {
@@ -198,7 +227,7 @@ export default function TeamInbox() {
                     }
                 });
             } catch (e) {
-                console.error('Audio notification error', e);
+                console.error('Audio/Notification error', e);
             }
         }
 
