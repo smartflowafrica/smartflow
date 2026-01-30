@@ -13,14 +13,19 @@ export async function POST(req: Request) {
         const body = await req.json();
 
         // DEBUG LOGGING
-        const fs = require('fs');
-        fs.appendFileSync('webhook-debug.log', JSON.stringify(body, null, 2) + '\n---\n');
+        const msgData = body?.data;
+        const key = msgData?.key;
+        console.log('[DEBUG WEBHOOK] Full Key:', JSON.stringify(key));
+        console.log('[DEBUG WEBHOOK] Participant:', msgData?.participant || 'N/A');
+        console.log('[DEBUG WEBHOOK] PushName:', msgData?.pushName);
+        console.log('[DEBUG WEBHOOK] MessageType:', msgData?.messageType);
 
         // 2. Parse via Service
         const parsed = await whatsapp.handleIncomingWebhook(body);
 
         // If parsed is null (e.g. check status update or outbound msg), ignore
         if (!parsed) {
+            console.log('[DEBUG WEBHOOK] Parsed Result: NULL (Ignored)');
             return NextResponse.json({ status: 'ignored' });
         }
 
