@@ -333,9 +333,19 @@ export class WhatsAppService {
                 cleanFrom = rawFrom.split('@')[0];
                 formattedFrom = '+' + cleanFrom;
             } else if (rawFrom.includes('@lid')) {
-                // Keep LID as is for routing, but force remove '+' if present
-                formattedFrom = rawFrom.replace(/^\+/, '');
-                console.log(`[Webhook] LID Detected: ${formattedFrom}`);
+                // LID Detected. We MUST resolve this to a real number because Evolution sendText doesn't support LID.
+                console.log(`[Webhook] LID Detected: ${rawFrom}. Resolving...`);
+                const realJid = await this.resolveLidToNumber(rawFrom);
+
+                if (realJid) {
+                    console.log(`[Webhook] Resolved LID ${rawFrom} -> ${realJid}`);
+                    cleanFrom = realJid.split('@')[0];
+                    formattedFrom = '+' + cleanFrom;
+                } else {
+                    console.warn(`[Webhook] Failed to resolve LID ${rawFrom}. Replying might fail.`);
+                    // Fallback: Try to use it without '+' but it likely won't work based on tests.
+                    formattedFrom = rawFrom.replace(/^\+/, '');
+                }
             } else {
                 // Fallback
                 cleanFrom = rawFrom.replace(/\D/g, '');
