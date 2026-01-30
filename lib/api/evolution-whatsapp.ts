@@ -330,17 +330,26 @@ export class WhatsAppService {
             let formattedFrom = rawFrom;
 
             if (rawFrom.includes('@lid')) {
-                // LID Detected. We MUST resolve this to a real number because Evolution sendText doesn't support LID.
-                console.log(`[Webhook] LID Detected: ${rawFrom}. Resolving...`);
-                const realJid = await this.resolveLidToNumber(rawFrom);
-
-                if (realJid) {
-                    console.log(`[Webhook] Resolved LID ${rawFrom} -> ${realJid}`);
-                    cleanFrom = realJid.split('@')[0]; // Extract number from resolved JID
+                // LID Detected.
+                // Strategy 1: Check if the payload contains the underlying phone number in 'participant' or 'key.participant'
+                const participantJid = msgData.participant || msgData.key.participant;
+                if (participantJid && participantJid.includes('@s.whatsapp.net')) {
+                    console.log(`[Webhook] LID Detected (${rawFrom}), but found participant JID: ${participantJid}`);
+                    cleanFrom = participantJid.split('@')[0];
                     formattedFrom = '+' + cleanFrom;
                 } else {
-                    console.warn(`[Webhook] Failed to resolve LID ${rawFrom}. Replying might fail.`);
-                    formattedFrom = rawFrom.replace(/^\+/, '');
+                    // Strategy 2: API Lookup
+                    console.log(`[Webhook] LID Detected: ${rawFrom} and no participant found. Resolving via API...`);
+                    const realJid = await this.resolveLidToNumber(rawFrom);
+
+                    if (realJid) {
+                        console.log(`[Webhook] Resolved LID ${rawFrom} -> ${realJid}`);
+                        cleanFrom = realJid.split('@')[0];
+                        formattedFrom = '+' + cleanFrom;
+                    } else {
+                        console.warn(`[Webhook] Failed to resolve LID ${rawFrom}. Replying might fail.`);
+                        formattedFrom = rawFrom.replace(/^\+/, '');
+                    }
                 }
             } else {
                 // Standard Phone Number (Account or Legacy) or Fallback
