@@ -57,7 +57,7 @@ export class WhatsAppService {
                 integration: 'WHATSAPP-BAILEYS',
                 webhook: {
                     enabled: true,
-                    url: 'https://smartflowafrica.com/api/whatsapp/webhook',
+                    url: 'https://smartflowafrica.com/api/webhooks/whatsapp',
                     byEvents: false,
                     events: ['MESSAGES_UPSERT', 'MESSAGES_UPDATE', 'SEND_MESSAGE']
                 }
@@ -205,8 +205,9 @@ export class WhatsAppService {
             });
 
             if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || 'Evolution API Error');
+                const errorText = await response.text();
+                console.error(`[Evolution API Error] URL: ${this.apiUrl}/message/sendText/${this.instanceName} | Status: ${response.status} | Body: ${errorText}`);
+                throw new Error(`Evolution API Error (${response.status}): ${errorText}`);
             }
 
             const data = await response.json();
