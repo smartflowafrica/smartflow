@@ -53,8 +53,14 @@ export class WhatsAppService {
             },
             body: JSON.stringify({
                 instanceName: instanceName,
-                qrcode: true, // We want QR code generation
-                integration: 'WHATSAPP-BAILEYS'
+                qrcode: true,
+                integration: 'WHATSAPP-BAILEYS',
+                webhook: {
+                    enabled: true,
+                    url: 'https://smartflowafrica.com/api/whatsapp/webhook',
+                    byEvents: false,
+                    events: ['MESSAGES_UPSERT', 'MESSAGES_UPDATE', 'SEND_MESSAGE']
+                }
             })
         });
 
