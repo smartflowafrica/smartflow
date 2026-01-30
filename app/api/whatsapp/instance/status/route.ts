@@ -21,12 +21,16 @@ export async function GET(request: Request) {
         const whatsapp = new WhatsAppService(instanceName);
 
         // Fetch Real-time Status
+        // Fetch Real-time Status
         const statusData = await whatsapp.getInstanceStatus();
-        // Format: { instance: "...", state: "open" | "close" | "connecting" }
+        console.log('[API] Raw Status Data:', JSON.stringify(statusData));
+
+        // Format: v1.8.2 returns { instance: { state: "open" } }
+        const actualState = statusData?.instance?.state || statusData?.state || 'unknown';
 
         // Sync with DB if needed
-        if (statusData && statusData.state) {
-            const normalizedStatus = statusData.state === 'open' ? 'connected' : 'disconnected';
+        if (actualState) {
+            const normalizedStatus = actualState === 'open' ? 'connected' : 'disconnected';
 
             await prisma.integration.update({
                 where: { clientId: user.clientId },
@@ -36,7 +40,7 @@ export async function GET(request: Request) {
 
         return NextResponse.json({
             success: true,
-            state: statusData?.state || 'unknown'
+            state: actualState
         });
 
     } catch (error: any) {
