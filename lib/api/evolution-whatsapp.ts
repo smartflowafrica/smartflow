@@ -30,6 +30,8 @@ export class WhatsAppService {
      * Evolution API usually takes numbers with country code but NO +
      */
     public formatPhone(phone: string): string {
+        if (phone.includes('@')) return phone; // Return full JID (LID or Group) as is
+
         let clean = phone.replace(/\D/g, ''); // Remove all non-digits
         // Nigerian handling (080 -> 23480)
         if (clean.startsWith('0') && clean.length === 11) {
