@@ -346,14 +346,15 @@ export class WhatsAppService {
 
             if (rawFrom.includes('@lid')) {
                 // LID Detected.
-                // Strategy 1: Check if the payload contains the underlying phone number in 'participant' or 'key.participant'
-                const participantJid = msgData.participant || msgData.key.participant;
+                // Strategy 1: Check if the payload contains the underlying phone number in top-level 'sender' or 'participant'
+                const participantJid = body.sender || msgData.participant || msgData.key.participant;
+
                 if (participantJid && participantJid.includes('@s.whatsapp.net')) {
-                    console.log(`[Webhook] LID Detected (${rawFrom}), but found participant JID: ${participantJid}`);
+                    console.log(`[Webhook] LID Detected (${rawFrom}). Found real JID in payload: ${participantJid}`);
                     cleanFrom = participantJid.split('@')[0];
                     formattedFrom = '+' + cleanFrom;
                 } else {
-                    // Strategy 2: API Lookup
+                    // Strategy 2: API Lookup (Last Resort)
                     console.log(`[Webhook] LID Detected: ${rawFrom} and no participant found. Resolving via API...`);
                     const realJid = await this.resolveLidToNumber(rawFrom);
 
