@@ -30,10 +30,25 @@ export class WhatsAppService {
      * Evolution API usually takes numbers with country code but NO +
      */
     public formatPhone(phone: string): string {
-        if (phone.includes('@')) return phone; // Return full JID (LID or Group) as is
+        // Evolution V1.8 Strict Rule: No '+' allowed in the number field, for ANY JID type.
+        // Even for LIDs (123@lid) or Groups (123@g.us), or Phones (234...).
 
-        let clean = phone.replace(/\D/g, ''); // Remove all non-digits
-        // Nigerian handling (080 -> 23480)
+        let clean = phone;
+
+        // 1. Remove leading '+' if present (Universal fix)
+        if (clean.startsWith('+')) {
+            clean = clean.substring(1);
+        }
+
+        // 2. If it's a JID (contains @), return it (now without +)
+        if (clean.includes('@')) {
+            return clean;
+        }
+
+        // 3. For raw numbers, strip non-digits
+        clean = clean.replace(/\D/g, '');
+
+        // 4. Nigerian handling (080 -> 23480)
         if (clean.startsWith('0') && clean.length === 11) {
             clean = '234' + clean.substring(1);
         }
