@@ -329,25 +329,22 @@ export class WhatsAppService {
             let cleanFrom = rawFrom;
             let formattedFrom = rawFrom;
 
-            if (rawFrom.includes('@s.whatsapp.net')) {
-                cleanFrom = rawFrom.split('@')[0];
-                formattedFrom = '+' + cleanFrom;
-            } else if (rawFrom.includes('@lid')) {
+            if (rawFrom.includes('@lid')) {
                 // LID Detected. We MUST resolve this to a real number because Evolution sendText doesn't support LID.
                 console.log(`[Webhook] LID Detected: ${rawFrom}. Resolving...`);
                 const realJid = await this.resolveLidToNumber(rawFrom);
 
                 if (realJid) {
                     console.log(`[Webhook] Resolved LID ${rawFrom} -> ${realJid}`);
-                    cleanFrom = realJid.split('@')[0];
+                    cleanFrom = realJid.split('@')[0]; // Extract number from resolved JID
                     formattedFrom = '+' + cleanFrom;
                 } else {
                     console.warn(`[Webhook] Failed to resolve LID ${rawFrom}. Replying might fail.`);
-                    // Fallback: Try to use it without '+' but it likely won't work based on tests.
                     formattedFrom = rawFrom.replace(/^\+/, '');
                 }
             } else {
-                // Fallback
+                // Standard Phone Number (Account or Legacy) or Fallback
+                // Just strip non-digits to ensure we have a clean number, avoiding '++' or domain issues.
                 cleanFrom = rawFrom.replace(/\D/g, '');
                 formattedFrom = '+' + cleanFrom;
             }
