@@ -419,6 +419,47 @@ export class WhatsAppService {
     }
 
     /**
+     * Resolves a Linked Device ID (LID) to a Real Phone Number JID
+     * Uses Evolution API /chat/find endpoint
+     */
+    private async resolveLidToNumber(lidJid: string): Promise<string | null> {
+        try {
+            // endpoint: /chat/find/{instance}/{jid}
+            const response = await fetch(`${this.apiUrl}/chat/find/${this.instanceName}/${lidJid}`, {
+                method: 'GET',
+                headers: { 'apikey': this.apiKey }
+            });
+
+            if (!response.ok) return null;
+
+            const data = await response.json();
+            // Expected structure: { id: "234...@s.whatsapp.net", ... } check for other props
+            // Sometimes it returns the same LID if it can't find it.
+            if (data?.id && data.id.includes('@s.whatsapp.net')) {
+                return data.id;
+            }
+
+            // Try /contact/find if chat/find failed?
+            const responseContact = await fetch(`${this.apiUrl}/contact/find/${this.instanceName}/${lidJid}`, {
+                method: 'GET',
+                headers: { 'apikey': this.apiKey }
+            });
+
+            if (responseContact.ok) {
+                const dataContact = await responseContact.json();
+                if (dataContact?.id && dataContact.id.includes('@s.whatsapp.net')) {
+                    return dataContact.id;
+                }
+            }
+
+            return null;
+        } catch (e) {
+            console.error('LID Resolution Error:', e);
+            return null;
+        }
+    }
+
+    /**
      * Sends Media Message (Image) via Evolution API
      */
     public async sendMedia(to: string, mediaUrl: string, caption?: string, clientId?: string, mediaType: 'image' | 'video' | 'document' = 'image', fileName?: string): Promise<any> {
