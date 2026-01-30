@@ -168,6 +168,44 @@ export default function TeamInbox() {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
 
+    // Track previous 'Needs Human' count to trigger sound
+    const prevNeedsHumanRef = useRef<Set<string>>(new Set());
+
+    useEffect(() => {
+        if (!isSoundEnabled || conversationsLoading) return;
+
+        const currentNeedsHuman = new Set(
+            conversations
+                .filter(c => c.status === 'needs_human')
+                .map(c => c.id)
+        );
+
+        // Check if we have a NEW ticket that wasn't there before
+        const hasNewRequest = [...currentNeedsHuman].some(id => !prevNeedsHumanRef.current.has(id));
+
+        if (hasNewRequest) {
+            try {
+                const audio = new Audio(NOTIFICATION_SOUND);
+                audio.play().catch(e => console.error('Audio play failed', e));
+                toast('New Customer Request', {
+                    description: 'A customer is waiting for a human agent.',
+                    action: {
+                        label: 'View',
+                        onClick: () => {
+                            const newId = [...currentNeedsHuman].find(id => !prevNeedsHumanRef.current.has(id));
+                            if (newId) setActiveConversationId(newId);
+                        }
+                    }
+                });
+            } catch (e) {
+                console.error('Audio notification error', e);
+            }
+        }
+
+        // Update ref
+        prevNeedsHumanRef.current = currentNeedsHuman;
+    }, [conversations, isSoundEnabled, conversationsLoading]);
+
 
     const handleSendMessage = async () => {
         if (!messageInput.trim() || !activeConversation || !client) return;
