@@ -346,16 +346,18 @@ export class WhatsAppService {
 
             if (rawFrom.includes('@lid')) {
                 // LID Detected.
-                // Strategy 1: Check if the payload contains the underlying phone number in top-level 'sender' or 'participant'
-                const participantJid = body.sender || msgData.participant || msgData.key.participant;
+                // UNRELIABLE: body.sender often points to the Instance Owner (Bot), not the Guest. 
+                // We must rely on 'participant' or API lookup.
+
+                const participantJid = msgData.participant || msgData.key.participant;
 
                 if (participantJid && participantJid.includes('@s.whatsapp.net')) {
-                    console.log(`[Webhook] LID Detected (${rawFrom}). Found real JID in payload: ${participantJid}`);
+                    console.log(`[Webhook] LID Detected (${rawFrom}). Found real JID in participant: ${participantJid}`);
                     cleanFrom = participantJid.split('@')[0];
                     formattedFrom = '+' + cleanFrom;
                 } else {
-                    // Strategy 2: API Lookup (Last Resort)
-                    console.log(`[Webhook] LID Detected: ${rawFrom} and no participant found. Resolving via API...`);
+                    // API Lookup
+                    console.log(`[Webhook] LID Detected: ${rawFrom}. Resolving via API...`);
                     const realJid = await this.resolveLidToNumber(rawFrom);
 
                     if (realJid) {
@@ -363,8 +365,11 @@ export class WhatsAppService {
                         cleanFrom = realJid.split('@')[0];
                         formattedFrom = '+' + cleanFrom;
                     } else {
-                        console.warn(`[Webhook] Failed to resolve LID ${rawFrom}. Replying might fail.`);
-                        formattedFrom = rawFrom.replace(/^\+/, '');
+                        // Fallback: Use the LID itself, but strictly NO '+'.
+                        console.warn(`[Webhook] Failed to resolve LID ${rawFrom}. Will reply to LID directly.`);
+                        // Ensure we don't have a plus
+                        cleanFrom = rawFrom.replace(/^\+/, '');
+                        formattedFrom = cleanFrom; // Keep LID format, no plus added
                     }
                 }
             } else {
