@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
+import { sendEmail } from '@/lib/services/mail';
+import { getWelcomeEmailTemplate } from '@/lib/emails/templates';
 
 export async function POST(req: Request) {
     try {
@@ -90,6 +92,19 @@ export async function POST(req: Request) {
 
             return user;
         });
+
+        // Send Welcome Email (Fire and forget, or await to ensure it sends? Await is safer for critical emails)
+        try {
+            await sendEmail({
+                to: email,
+                subject: 'Welcome to SmartFlow Africa! 🚀',
+                html: getWelcomeEmailTemplate(name, `${process.env.NEXT_PUBLIC_APP_URL}/login`)
+            });
+            console.log(`Welcome email sent to ${email}`);
+        } catch (emailError) {
+            console.error('Failed to send welcome email:', emailError);
+            // We don't fail the request if email fails, but we log it.
+        }
 
         return NextResponse.json({
             success: true,
