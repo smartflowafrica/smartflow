@@ -188,24 +188,7 @@ export default function LoginPage() {
                             </p>
                         </div>
 
-                        {/* Demo Credentials */}
-                        <div className="mt-8 pt-6 border-t border-slate-200">
-                            <p className="text-xs text-slate-500 font-semibold uppercase tracking-wide mb-4 text-center">
-                                Demo Accounts
-                            </p>
-                            <div className="grid grid-cols-2 gap-3">
-                                <div className="p-3 bg-gradient-to-br from-slate-50 to-slate-100 rounded-lg border border-slate-200">
-                                    <div className="text-xs font-bold text-slate-700 mb-1">Admin</div>
-                                    <div className="text-xs text-slate-600 mb-0.5">admin@smartflowafrica.com</div>
-                                    <div className="text-xs font-mono text-blue-600">admin123</div>
-                                </div>
-                                <div className="p-3 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
-                                    <div className="text-xs font-bold text-slate-700 mb-1">Client</div>
-                                    <div className="text-xs text-slate-600 mb-0.5">chidi@example.com</div>
-                                    <div className="text-xs font-mono text-blue-600">password123</div>
-                                </div>
-                            </div>
-                        </div>
+
                     </div>
 
                     <p className="text-center text-sm text-slate-500 mt-6">
