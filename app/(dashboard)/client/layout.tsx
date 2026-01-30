@@ -18,6 +18,7 @@ import { BranchSelector } from '@/components/layout/BranchSelector'
 import { SignOutButton } from '@/components/auth/SignOutButton'
 import { GlobalAlerts } from '@/components/layout/GlobalAlerts'
 import { InboxNavLink } from '@/components/layout/InboxNavLink'
+import { ClientMobileNav } from '@/components/layout/ClientMobileNav'
 
 export const dynamic = 'force-dynamic'
 
@@ -26,6 +27,7 @@ export default async function ClientLayout({
 }: {
     children: React.ReactNode
 }) {
+    // ... (keep existing data fetching code) ...
     const session = await getServerSession(authOptions)
     const userEmail = session?.user?.email || ''
 
@@ -67,7 +69,16 @@ export default async function ClientLayout({
     return (
         <ClientProvider initialClient={initialClient}>
             <GlobalAlerts />
-            <div className="flex h-screen bg-slate-50">
+            {/* Mobile Navigation */}
+            <ClientMobileNav
+                client={initialClient}
+                config={config}
+                isOwnerOrManager={isOwnerOrManager}
+                displayName={displayName}
+                displaySubtitle={displaySubtitle}
+            />
+
+            <div className="flex h-[calc(100vh-64px)] md:h-screen bg-slate-50">
                 {/* Sidebar */}
                 <aside className="w-64 bg-white border-r border-slate-200 hidden md:flex flex-col">
                     <div className="p-6 border-b border-slate-100">
