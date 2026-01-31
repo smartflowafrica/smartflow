@@ -62,6 +62,7 @@ export class WhatsAppService {
      */
     public async createInstance(instanceName: string, integrationId?: string): Promise<any> {
         // Evolution v1.8 /instance/create
+        // FIX: sending webhook object in create causes 400 error. Create first, then set webhook.
         const response = await fetch(`${this.apiUrl}/instance/create`, {
             method: 'POST',
             headers: {
@@ -71,13 +72,7 @@ export class WhatsAppService {
             body: JSON.stringify({
                 instanceName: instanceName,
                 qrcode: true,
-                integration: 'WHATSAPP-BAILEYS',
-                webhook: {
-                    enabled: true,
-                    url: 'https://smartflowafrica.com/api/webhooks/whatsapp',
-                    byEvents: false,
-                    events: ['MESSAGES_UPSERT', 'MESSAGES_UPDATE', 'SEND_MESSAGE']
-                }
+                integration: 'WHATSAPP-BAILEYS'
             })
         });
 
@@ -107,7 +102,42 @@ export class WhatsAppService {
             throw new Error(`Failed to create instance: ${errorText}`);
         }
 
-        return await response.json();
+        const data = await response.json();
+
+        // Configure Webhook separately
+        try {
+            console.log(`[WhatsAppService] Setting webhook for ${instanceName}...`);
+            await this.setWebhook(instanceName);
+        } catch (webhookError) {
+            console.error('[WhatsAppService] Warning: Failed to set webhook:', webhookError);
+        }
+
+        return data;
+    }
+
+    /**
+     * Sets the webhook for a specific instance
+     */
+    public async setWebhook(instanceName: string): Promise<any> {
+        const response = await fetch(`${this.apiUrl}/webhook/set/${instanceName}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'apikey': this.apiKey
+            },
+            body: JSON.stringify({
+                enabled: true,
+                url: 'https://smartflowafrica.com/api/webhooks/whatsapp',
+                webhookByEvents: false,
+                events: ['MESSAGES_UPSERT', 'MESSAGES_UPDATE', 'SEND_MESSAGE']
+            })
+        });
+
+        if (!response.ok) {
+            console.error('Webhook Set Error:', await response.text());
+        }
+
+        return response.ok;
     }
 
     /**
@@ -202,8 +232,8 @@ export class WhatsAppService {
         // 1. SAFETY: Rate Limiting Check
         await this.checkRateLimit(formattedTo);
 
-        try {
-            // 2. Send via Evolution API (v1.8 format)
+        // Inner function to attempt sending
+        const attemptSend = async () => {
             const response = await fetch(`${this.apiUrl}/message/sendText/${this.instanceName}`, {
                 method: 'POST',
                 headers: {
@@ -212,22 +242,43 @@ export class WhatsAppService {
                 },
                 body: JSON.stringify({
                     number: formattedTo,
-                    textMessage: {
-                        text: message
-                    },
-                    options: {
-                        delay: 1200 // Add slight delay for safety
-                    }
+                    textMessage: { text: message },
+                    options: { delay: 1200 }
                 })
             });
 
             if (!response.ok) {
                 const errorText = await response.text();
-                console.error(`[Evolution API Error] URL: ${this.apiUrl}/message/sendText/${this.instanceName} | Status: ${response.status} | Body: ${errorText}`);
+                // Check specifically for Connection Closed or 500
+                if (response.status === 500 || errorText.includes('Connection Closed')) {
+                    throw new Error(`RETRY_NEEDED: ${errorText}`);
+                }
                 throw new Error(`Evolution API Error (${response.status}): ${errorText}`);
             }
+            return await response.json();
+        };
 
-            const data = await response.json();
+        try {
+            let data;
+            try {
+                data = await attemptSend();
+            } catch (initialError: any) {
+                if (initialError.message.includes('RETRY_NEEDED')) {
+                    console.warn(`[WhatsAppService] Connection issue detected. Attempting to reconnect instance ${this.instanceName}...`);
+
+                    // Attempt Reconnect
+                    const connectRes = await this.connectInstance();
+                    console.log('[WhatsAppService] Reconnect Result:', connectRes);
+
+                    // Wait 2 seconds for connection to stabilize
+                    await new Promise(r => setTimeout(r, 2000));
+
+                    console.log('[WhatsAppService] Retrying message send...');
+                    data = await attemptSend();
+                } else {
+                    throw initialError;
+                }
+            }
 
             // 3. Log to Database (if clientId provided)
             if (clientId) {
@@ -250,9 +301,6 @@ export class WhatsAppService {
 
             // Log to System Health
             try {
-                // We need to dynamic import or use the instance available
-                // To avoid circular dep issues in some frameworks, we use the global prisma if available or import it at top
-                // Since this is a server-side class, standard import works.
                 await prisma.systemLog.create({
                     data: {
                         level: 'ERROR',
