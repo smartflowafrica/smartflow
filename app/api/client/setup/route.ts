@@ -27,12 +27,32 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
+        // 1. Look up Sector to get the correct Enum Code and Relation ID
+        let sectorId = info?.type;
+        let businessTypeEnum = 'OTHER';
+
+        if (sectorId) {
+            const sector = await prisma.businessSector.findUnique({
+                where: { id: sectorId }
+            });
+
+            if (sector) {
+                const code = sector.code.toUpperCase();
+                // Valid Enums matching BusinessType
+                const validTypes = ['AUTO_MECHANIC', 'RESTAURANT', 'SALON', 'HOTEL', 'RETAIL', 'HEALTHCARE', 'REAL_ESTATE', 'EDUCATION', 'LOGISTICS', 'FITNESS', 'PROFESSIONAL_SERVICES'];
+
+                if (validTypes.includes(code)) businessTypeEnum = code;
+                if (code === 'AUTO_REPAIR') businessTypeEnum = 'AUTO_MECHANIC'; // Map legacy code
+            }
+        }
+
         await prisma.$transaction(async (tx) => {
             await tx.client.update({
                 where: { id: clientId },
                 data: {
                     businessName: info?.name,
-                    businessType: info?.type,
+                    businessType: businessTypeEnum as any, // Set correct Enum
+                    sectorId: sectorId, // Link the Relation
                     ownerName: info?.owner,
                     phone: info?.phone,
                     address: info?.address || config?.address,
