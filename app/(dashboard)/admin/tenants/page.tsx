@@ -36,8 +36,27 @@ function TenantsContent() {
         ? clients.filter(c => c.id === filterId)
         : clients;
 
+    async function handleDelete(clientId: string, name: string) {
+        if (!confirm(`Are you sure you want to DE-BOARD (Delete) client "${name}"?\n\nThis action is irreversible. All their data (Users, Jobs, History) will be wiped.`)) {
+            return;
+        }
+
+        try {
+            const res = await fetch(`/api/clients/${clientId}`, { method: 'DELETE' });
+            if (!res.ok) throw new Error('Failed to delete');
+
+            toast.success('Client de-boarded successfully');
+            setClients(prev => prev.filter(c => c.id !== clientId));
+            router.refresh();
+        } catch (error) {
+            console.error(error);
+            toast.error('Failed to delete client');
+        }
+    }
+
     return (
         <div className="space-y-6 p-6">
+            {/* ... Header ... */}
             <div className="flex justify-between items-center">
                 <div>
                     <h1 className="text-2xl font-bold text-slate-800">Tenants</h1>
@@ -147,9 +166,13 @@ function TenantsContent() {
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 text-right">
-                                            <button className="text-slate-400 hover:text-blue-600 transition">
+                                            <button
+                                                onClick={() => handleDelete(client.id, client.businessName)}
+                                                className="text-slate-400 hover:text-red-600 transition p-2 hover:bg-red-50 rounded"
+                                                title="De-board (Delete) Client"
+                                            >
                                                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                                 </svg>
                                             </button>
                                         </td>
