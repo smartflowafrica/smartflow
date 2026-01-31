@@ -62,7 +62,10 @@ export default function WhatsAppConnect({ initialStatus = 'disconnected' }: What
         try {
             // 1. Create Instance
             const createRes = await fetch('/api/whatsapp/instance/create', { method: 'POST' });
-            if (!createRes.ok) throw new Error('Failed to start connection');
+            if (!createRes.ok) {
+                const errorData = await createRes.json().catch(() => ({ error: 'Unknown Error' }));
+                throw new Error(errorData.error || 'Failed to start connection');
+            }
 
             setStatus('created');
 
@@ -76,13 +79,15 @@ export default function WhatsAppConnect({ initialStatus = 'disconnected' }: What
             } else if (qrData.data?.instance?.state === 'open') {
                 setStatus('connected');
                 toast.success('Already connected!');
+            } else if (qrData.error) {
+                throw new Error(qrData.error);
             } else {
-                toast.error('Could not fetch QR code. Please try again.');
+                toast.error('Could not fetch QR code. Please check console for details.');
             }
 
-        } catch (error) {
+        } catch (error: any) {
             console.error(error);
-            toast.error('Connection failed');
+            toast.error(error.message || 'Connection failed');
         } finally {
             setLoading(false);
         }

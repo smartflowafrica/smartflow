@@ -4,17 +4,18 @@ import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { Plus, Search, Edit2, Trash2, Tag, Clock } from 'lucide-react';
 import { toast } from 'sonner';
-import { useClient } from '@/hooks/useClient'; // Added
+import { useClient } from '@/hooks/useClient';
 import { BusinessTypeAdapter } from '@/components/client/BusinessTypeAdapter';
 import { BUSINESS_TYPES } from '@/lib/config/business-types';
+import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 
 interface Service {
     id: string;
     name: string;
     description: string;
     price?: number;
-    commitmentFee?: number; // New Field  
-    duration: number; // in minutes
+    commitmentFee?: number;
+    duration: number;
     category: string;
     active: boolean;
     metadata?: any;
@@ -30,6 +31,13 @@ export default function ServicesPage() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingService, setEditingService] = useState<Service | null>(null);
 
+    // Delete Modal State
+    const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; id: string | null }>({
+        isOpen: false,
+        id: null
+    });
+    const [isDeleting, setIsDeleting] = useState(false);
+
     // Get Terminology
     const config = client?.businessType ? BUSINESS_TYPES[client.businessType] : BUSINESS_TYPES.OTHER;
     const serviceLabel = config?.terminology?.service || 'Service';
@@ -39,8 +47,6 @@ export default function ServicesPage() {
     // State for Images
     const [images, setImages] = useState<string[]>([]);
     const [isUploading, setIsUploading] = useState(false);
-
-    // ... (rest of state items same) ...
 
     // Initialize images when editing
     useEffect(() => {
@@ -72,7 +78,6 @@ export default function ServicesPage() {
     }, [editingService, isModalOpen]);
 
     const formatCurrencyInput = (value: string) => {
-        // Remove non-digits
         const number = value.replace(/[^0-9]/g, '');
         if (!number) return '';
         return Number(number).toLocaleString();
@@ -163,7 +168,7 @@ export default function ServicesPage() {
             duration: parseInt(formData.get('duration') as string),
             category: formData.get('category'),
             metadata,
-            postToStatus, // New Field
+            postToStatus,
             pricingRules: pricingRules.filter(r => r.location && r.price).map(r => ({ location: r.location, price: parseFloat(r.price.replace(/,/g, '')) })),
             isActive: true
         };
@@ -193,16 +198,26 @@ export default function ServicesPage() {
         }
     };
 
-    const handleDelete = async (id: string) => {
-        if (!confirm('Are you sure you want to delete this service?')) return;
+    // Modified to use Modal state
+    const handleDelete = (id: string) => {
+        setDeleteModal({ isOpen: true, id });
+    };
+
+    // Actual Delete Function
+    const confirmDelete = async () => {
+        if (!deleteModal.id) return;
+        setIsDeleting(true);
 
         try {
-            const res = await fetch(`/api/services/${id}`, { method: 'DELETE' });
+            const res = await fetch(`/api/services/${deleteModal.id}`, { method: 'DELETE' });
             if (!res.ok) throw new Error('Failed to delete');
             toast.success(`${serviceLabel} deleted`);
             fetchServices();
+            setDeleteModal({ isOpen: false, id: null });
         } catch (error) {
             toast.error('Failed to delete service');
+        } finally {
+            setIsDeleting(false);
         }
     };
 
@@ -400,9 +415,6 @@ export default function ServicesPage() {
                                     </div>
                                     <p className="text-xs text-slate-400">Upload multiple images. They will be sent as an album.</p>
                                 </div>
-                                {images.length > 0 && (
-                                    null
-                                )}
                             </div>
 
                             {/* Dynamic Pricing Rules */}
@@ -462,6 +474,18 @@ export default function ServicesPage() {
                     </div>
                 </div>
             )}
+
+            {/* Confirmation Modal */}
+            <ConfirmationModal
+                isOpen={deleteModal.isOpen}
+                onClose={() => setDeleteModal({ isOpen: false, id: null })}
+                onConfirm={confirmDelete}
+                title={`Delete ${serviceLabel}?`}
+                message={`Are you sure you want to delete this ${serviceLabel.toLowerCase()}? This action cannot be undone.`}
+                confirmText="Delete"
+                isLoading={isDeleting}
+                variant="danger"
+            />
         </div>
     );
 }

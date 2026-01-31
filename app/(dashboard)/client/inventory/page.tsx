@@ -5,8 +5,8 @@ import { Package, Plus, Search, Filter, AlertTriangle, MoreHorizontal, Edit, Tra
 import { toast } from 'sonner';
 import { AddProductModal } from '@/components/client/inventory/AddProductModal';
 import { useSession } from 'next-auth/react';
-
 import { EditProductModal } from '@/components/client/inventory/EditProductModal';
+import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 
 interface Product {
     id: string;
@@ -30,6 +30,13 @@ export default function InventoryPage() {
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+
+    // Delete Modal State
+    const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; id: string | null }>({
+        isOpen: false,
+        id: null
+    });
+    const [isDeleting, setIsDeleting] = useState(false);
 
     const fetchProducts = async () => {
         setIsLoading(true);
@@ -59,18 +66,26 @@ export default function InventoryPage() {
         p.category?.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
-    const handleDelete = async (id: string) => {
-        if (!confirm('Are you sure? This will remove the item from active inventory.')) return;
+    const handleDelete = (id: string) => {
+        setDeleteModal({ isOpen: true, id });
+    };
+
+    const confirmDelete = async () => {
+        if (!deleteModal.id) return;
+        setIsDeleting(true);
         try {
-            const res = await fetch(`/api/inventory/${id}`, { method: 'DELETE' });
+            const res = await fetch(`/api/inventory/${deleteModal.id}`, { method: 'DELETE' });
             if (res.ok) {
                 toast.success('Product removed');
                 fetchProducts();
+                setDeleteModal({ isOpen: false, id: null });
             } else {
                 toast.error('Failed to delete');
             }
         } catch (e) {
             toast.error('Error deleting product');
+        } finally {
+            setIsDeleting(false);
         }
     };
 
@@ -211,6 +226,18 @@ export default function InventoryPage() {
                     </table>
                 </div>
             </div>
+
+            {/* Confirmation Modal */}
+            <ConfirmationModal
+                isOpen={deleteModal.isOpen}
+                onClose={() => setDeleteModal({ isOpen: false, id: null })}
+                onConfirm={confirmDelete}
+                title="Remove Product?"
+                message="Are you sure you want to remove this item from your active inventory? This action cannot be undone."
+                confirmText="Remove Item"
+                isLoading={isDeleting}
+                variant="danger"
+            />
         </div>
     );
 }

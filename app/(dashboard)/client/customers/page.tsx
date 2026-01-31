@@ -7,6 +7,7 @@ import { Plus, Search, Filter, Phone, Mail, MoreHorizontal, Edit, Trash2, User }
 import { toast } from 'sonner';
 
 import { AddCustomerModal } from '@/components/client/AddCustomerModal';
+import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 
 export default function CustomersPage() {
     const { client } = useClient();
@@ -20,6 +21,13 @@ export default function CustomersPage() {
     const [editingCustomer, setEditingCustomer] = useState<any | null>(null);
     const [activeActionId, setActiveActionId] = useState<string | null>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
+
+    // Delete Modal State
+    const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; id: string | null }>({
+        isOpen: false,
+        id: null
+    });
+    const [isDeleting, setIsDeleting] = useState(false);
 
     useEffect(() => {
         if (client) {
@@ -56,20 +64,28 @@ export default function CustomersPage() {
         }
     };
 
-    const handleDelete = async (id: string) => {
-        if (!confirm('Are you sure you want to delete this customer?')) return;
+    const handleDelete = (id: string) => {
+        setDeleteModal({ isOpen: true, id });
+        setActiveActionId(null);
+    };
+
+    const confirmDelete = async () => {
+        if (!deleteModal.id) return;
+        setIsDeleting(true);
 
         try {
             const { deleteCustomer } = await import('@/app/actions/customers');
-            const result = await deleteCustomer(id);
+            const result = await deleteCustomer(deleteModal.id);
             if (!result.success) throw new Error(result.error);
 
             toast.success('Customer deleted');
             fetchCustomers();
+            setDeleteModal({ isOpen: false, id: null });
         } catch (error: any) {
             toast.error(error.message || 'Failed to delete');
+        } finally {
+            setIsDeleting(false);
         }
-        setActiveActionId(null);
     };
 
     const filteredCustomers = customers.filter(c =>
@@ -241,6 +257,18 @@ export default function CustomersPage() {
                     </div>
                 )}
             </div>
+
+            {/* Confirmation Modal */}
+            <ConfirmationModal
+                isOpen={deleteModal.isOpen}
+                onClose={() => setDeleteModal({ isOpen: false, id: null })}
+                onConfirm={confirmDelete}
+                title="Delete Customer?"
+                message="Are you sure you want to delete this customer? All their associated data (jobs, appointments, history) will be permanently removed. This action cannot be undone."
+                confirmText="Delete Customer"
+                isLoading={isDeleting}
+                variant="danger"
+            />
         </div>
     );
 }

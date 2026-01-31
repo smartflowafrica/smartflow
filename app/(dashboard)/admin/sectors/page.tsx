@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Plus, Pencil, Trash2, Building2 } from 'lucide-react';
+import { ConfirmationModal } from '../../../../components/ui/ConfirmationModal';
 
 interface BusinessSector {
     id: string;
@@ -21,6 +22,13 @@ export default function SectorsPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
     const [editingSector, setEditingSector] = useState<BusinessSector | null>(null);
+
+    // Delete Modal State
+    const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; sector: BusinessSector | null }>({
+        isOpen: false,
+        sector: null
+    });
+    const [isDeleting, setIsDeleting] = useState(false);
 
     useEffect(() => {
         fetchSectors();
@@ -50,11 +58,16 @@ export default function SectorsPage() {
         setShowModal(true);
     }
 
-    async function handleDelete(sector: BusinessSector) {
-        if (!confirm(`Are you sure you want to delete "${sector.name}"?`)) return;
+    function handleDelete(sector: BusinessSector) {
+        setDeleteModal({ isOpen: true, sector });
+    }
+
+    async function confirmDelete() {
+        if (!deleteModal.sector) return;
+        setIsDeleting(true);
 
         try {
-            const res = await fetch(`/api/sectors?id=${sector.id}`, {
+            const res = await fetch(`/api/sectors?id=${deleteModal.sector.id}`, {
                 method: 'DELETE',
             });
 
@@ -65,8 +78,11 @@ export default function SectorsPage() {
 
             toast.success('Sector deleted successfully');
             fetchSectors();
+            setDeleteModal({ isOpen: false, sector: null });
         } catch (error: any) {
             toast.error(error.message || 'Failed to delete sector');
+        } finally {
+            setIsDeleting(false);
         }
     }
 
@@ -182,6 +198,27 @@ export default function SectorsPage() {
                     }}
                 />
             )}
+
+            {/* Confirmation Modal */}
+            <ConfirmationModal
+                isOpen={deleteModal.isOpen}
+                onClose={() => setDeleteModal({ isOpen: false, sector: null })}
+                onConfirm={confirmDelete}
+                title="Delete Business Sector?"
+                message={
+                    <>
+                        Are you sure you want to delete <strong className="text-slate-900">{deleteModal.sector?.name}</strong>?
+                        <br /><br />
+                        <span className="text-red-600 font-medium bg-red-50 px-2 py-1 rounded">
+                            Caution: This breaks existing clients.
+                        </span>
+                        <br />Ensure no active clients are assigned to this sector before deleting.
+                    </>
+                }
+                confirmText="Delete Sector"
+                isLoading={isDeleting}
+                variant="danger"
+            />
         </div>
     );
 }
