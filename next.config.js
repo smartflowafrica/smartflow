@@ -20,6 +20,10 @@ const nextConfig = {
         source: '/api/evolution/:path*',
         destination: 'http://localhost:8081/:path*',
       },
+      {
+        source: '/manager/:path*',
+        destination: 'http://localhost:8081/manager/:path*',
+      },
     ]
   },
   async headers() {
