@@ -24,6 +24,10 @@ const nextConfig = {
         source: '/manager/:path*',
         destination: 'http://localhost:8081/manager/:path*',
       },
+      {
+        source: '/socket.io/:path*',
+        destination: 'http://localhost:8081/socket.io/:path*',
+      },
     ]
   },
   async headers() {
