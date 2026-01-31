@@ -143,13 +143,14 @@ export class WhatsAppService {
     /**
      * Fetches the connection status and QR code if strictly needed
      */
-    public async connectInstance(): Promise<{ base64?: string, status: string }> {
+    public async connectInstance(signal?: AbortSignal): Promise<{ base64?: string, status: string }> {
         // Evolution v1.8 /instance/connect/{instance}
         const response = await fetch(`${this.apiUrl}/instance/connect/${this.instanceName}`, {
             method: 'GET',
             headers: {
                 'apikey': this.apiKey
-            }
+            },
+            signal
         });
 
         if (!response.ok) {
@@ -233,13 +234,14 @@ export class WhatsAppService {
         await this.checkRateLimit(formattedTo);
 
         // Inner function to attempt sending
-        const attemptSend = async () => {
+        const attemptSend = async (signal?: AbortSignal) => {
             const response = await fetch(`${this.apiUrl}/message/sendText/${this.instanceName}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'apikey': this.apiKey
                 },
+                signal,
                 body: JSON.stringify({
                     number: formattedTo,
                     textMessage: { text: message },
@@ -261,20 +263,48 @@ export class WhatsAppService {
         try {
             let data;
             try {
-                data = await attemptSend();
+                // Timeout wrapper for attemptSend to fail fast (30s max for send)
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 30000);
+
+                try {
+                    data = await attemptSend(controller.signal);
+                } finally {
+                    clearTimeout(timeoutId);
+                }
+
             } catch (initialError: any) {
-                if (initialError.message.includes('RETRY_NEEDED')) {
-                    console.warn(`[WhatsAppService] Connection issue detected. Attempting to reconnect instance ${this.instanceName}...`);
+                // Identify Retryable Errors vs Permanent Errors
+                const isRetryable = initialError.message.includes('RETRY_NEEDED') ||
+                    initialError.message.includes('timeout') ||
+                    initialError.name === 'AbortError';
 
-                    // Attempt Reconnect
-                    const connectRes = await this.connectInstance();
-                    console.log('[WhatsAppService] Reconnect Result:', connectRes);
+                if (isRetryable) {
+                    console.warn(`[WhatsAppService] Connection/Timeout issue. Attempting to reconnect ${this.instanceName}...`);
 
-                    // Wait 2 seconds for connection to stabilize
-                    await new Promise(r => setTimeout(r, 2000));
+                    // 1. Trigger Reconnect (Non-Blocking if possible, but here we wait with short timeout)
+                    try {
+                        const connectController = new AbortController();
+                        const connectTimeout = setTimeout(() => connectController.abort(), 10000); // 10s max for connect
+                        await this.connectInstance(connectController.signal);
+                        clearTimeout(connectTimeout);
+                    } catch (e) {
+                        console.error('[WhatsAppService] Reconnect attempt failed or timed out:', e);
+                        // Continue to retry send anyway, maybe it auto-connected?
+                    }
+
+                    // 2. Wait 3 seconds for connection stability
+                    await new Promise(r => setTimeout(r, 3000));
 
                     console.log('[WhatsAppService] Retrying message send...');
-                    data = await attemptSend();
+                    // Retry with fresh timeout
+                    const retryController = new AbortController();
+                    const retryTimeout = setTimeout(() => retryController.abort(), 30000);
+                    try {
+                        data = await attemptSend(retryController.signal);
+                    } finally {
+                        clearTimeout(retryTimeout);
+                    }
                 } else {
                     throw initialError;
                 }
