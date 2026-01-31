@@ -18,15 +18,15 @@ const nextConfig = {
     return [
       {
         source: '/api/evolution/:path*',
-        destination: 'http://localhost:8081/:path*',
+        destination: 'http://127.0.0.1:8081/:path*',
       },
       {
         source: '/manager/:path*',
-        destination: 'http://localhost:8081/manager/:path*',
+        destination: 'http://127.0.0.1:8081/manager/:path*',
       },
       {
         source: '/socket.io/:path*',
-        destination: 'http://localhost:8081/socket.io/:path*',
+        destination: 'http://127.0.0.1:8081/socket.io/:path*',
       },
     ]
   },
