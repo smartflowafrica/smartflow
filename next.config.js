@@ -14,6 +14,14 @@ const nextConfig = {
       },
     ]
   },
+  async rewrites() {
+    return [
+      {
+        source: '/api/evolution/:path*',
+        destination: 'http://localhost:8081/:path*',
+      },
+    ]
+  },
   async headers() {
     return [
       {
