@@ -21,7 +21,7 @@ export async function POST(request: Request) {
         }
 
         const clientId = user.clientId!;
-        const instanceName = `client_${clientId}`; // Unique instance name
+        const instanceName = clientId; // Shortened name (just CUID/UUID)
 
         console.log(`[API] Creating WhatsApp Instance for Client ${clientId}: ${instanceName}`);
 

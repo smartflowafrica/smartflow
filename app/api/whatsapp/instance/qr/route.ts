@@ -17,7 +17,7 @@ export async function GET(request: Request) {
             return NextResponse.json({ error: 'Client not found' }, { status: 404 });
         }
 
-        const instanceName = `client_${user.clientId}`;
+        const instanceName = user.clientId!;
         const whatsapp = new WhatsAppService(instanceName);
 
         // Fetch QR Code / Connection Data

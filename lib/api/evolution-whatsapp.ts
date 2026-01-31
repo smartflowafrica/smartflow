@@ -72,8 +72,7 @@ export class WhatsAppService {
             },
             body: JSON.stringify({
                 instanceName: instanceName,
-                qrcode: true,
-                integration: 'WHATSAPP-BAILEYS'
+                qrcode: true
             })
         });
 
