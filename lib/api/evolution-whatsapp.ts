@@ -16,7 +16,7 @@ export class WhatsAppService {
     private instanceName: string;
 
     constructor(instanceName?: string) {
-        this.apiUrl = process.env.SERVER_URL || 'http://localhost:8081';
+        this.apiUrl = process.env.SERVER_URL || 'http://127.0.0.1:8081';
         this.apiKey = process.env.AUTHENTICATION_API_KEY || '';
         // Use provided instance name, or fallback to default Env
         this.instanceName = instanceName || process.env.EVOLUTION_INSTANCE_NAME || 'SmartFlowMain';
@@ -24,6 +24,7 @@ export class WhatsAppService {
         // Initialize Redis for Rate Limiting
         this.redis = new Redis(process.env.CACHE_REDIS_URI || 'redis://localhost:6379/1');
     }
+
 
     /**
      * Formats a phone number to standard format (remove +, spaces)
@@ -143,25 +144,29 @@ export class WhatsAppService {
     /**
      * Fetches the connection status and QR code if strictly needed
      */
-    public async connectInstance(signal?: AbortSignal): Promise<{ base64?: string, status: string }> {
+    public async connectInstance(signal?: AbortSignal): Promise<{ base64?: string, status: string, error?: string }> {
         // Evolution v1.8 /instance/connect/{instance}
-        const response = await fetch(`${this.apiUrl}/instance/connect/${this.instanceName}`, {
-            method: 'GET',
-            headers: {
-                'apikey': this.apiKey
-            },
-            signal
-        });
+        try {
+            const response = await fetch(`${this.apiUrl}/instance/connect/${this.instanceName}`, {
+                method: 'GET',
+                headers: {
+                    'apikey': this.apiKey
+                },
+                signal
+            });
 
-        if (!response.ok) {
-            return { status: 'ERROR' };
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error(`[WhatsAppService] Connect Failed (${response.status}): ${errorText}`);
+                return { status: 'ERROR', error: errorText };
+            }
+
+            const data = await response.json();
+            return data;
+        } catch (e: any) {
+            console.error('[WhatsAppService] Connect Network Error:', e);
+            return { status: 'ERROR', error: e.message };
         }
-
-        const data = await response.json();
-        // v1.8 structure usually returns { base64: "...", code: "..." } if QR is needed
-        // OR checks the logs/socket. 
-        // For fetching the QR specifically if it wasn't returned on create:
-        return data;
     }
 
     /**
