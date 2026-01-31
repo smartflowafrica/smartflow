@@ -88,7 +88,12 @@ export async function POST(req: Request) {
         }
 
         if (!client) {
-            console.warn(`[Webhook] Unclaimed message. From: ${from}. Ignoring.`);
+            console.warn(`[Webhook] Unclaimed message. From: ${from}. Instance: ${instanceId}. Variants: ${JSON.stringify(phoneVariants)}`);
+            // Check if any client HAS this instanceId but was missed?
+            if (instanceId) {
+                const check = await prisma.integration.findFirst({ where: { whatsappInstanceId: instanceId } });
+                console.warn(`[Webhook] Debug Instance Lookup: ${instanceId} -> Client ID: ${check?.clientId || 'NULL'}`);
+            }
             return NextResponse.json({ status: 'unclaimed' });
         }
 

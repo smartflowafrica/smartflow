@@ -370,7 +370,7 @@ export class WhatsAppService {
      */
     private async checkRateLimit(recipient: string): Promise<void> {
         const key = `ratelimit:${recipient}`;
-        const limit = 100; // Increased limit for testing
+        const limit = 1000; // Increased limit for production usage
         const window = 3600; // 1 hour
 
         const current = await this.redis.incr(key);
