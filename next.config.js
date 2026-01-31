@@ -17,10 +17,6 @@ const nextConfig = {
   async rewrites() {
     return [
       {
-        source: '/api/evolution/:path*',
-        destination: 'http://127.0.0.1:8081/:path*',
-      },
-      {
         source: '/manager/:path*',
         destination: 'http://127.0.0.1:8081/manager/:path*',
       },
