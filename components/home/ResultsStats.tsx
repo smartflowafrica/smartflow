@@ -3,54 +3,54 @@
 import { motion } from 'framer-motion'
 import { useEffect, useState } from 'react'
 
-const stats = [
-  {
-    value: 847000,
-    suffix: '+',
-    label: 'Messages Automated',
-    description: 'Every single month',
-  },
-  {
-    value: 2.4,
-    suffix: 'B+',
-    prefix: '₦',
-    label: 'Revenue Generated',
-    description: 'For our clients',
-  },
-  {
-    value: 99.5,
-    suffix: '%',
-    label: 'Uptime Guarantee',
-    description: 'Always available',
-  },
-  {
-    value: 100,
-    suffix: '+',
-    label: 'Active Businesses',
-    description: 'Across Nigeria',
-  },
-  {
-    value: 24,
-    suffix: '/7',
-    label: 'Support Available',
-    description: 'Real humans, real help',
-  },
-  {
-    value: 4.9,
-    suffix: '/5',
-    label: 'Customer Rating',
-    description: 'Based on 200+ reviews',
-  },
-]
+const stats: {
+  value: number
+  suffix: string
+  prefix?: string
+  label: string
+  description: string
+}[] = [
+    {
+      value: 847000,
+      suffix: '+',
+      label: 'Messages Automated',
+      description: 'Every single month',
+    },
 
-function AnimatedCounter({ 
-  value, 
-  prefix = '', 
-  suffix = '' 
-}: { 
+    {
+      value: 99.5,
+      suffix: '%',
+      label: 'Uptime Guarantee',
+      description: 'Always available',
+    },
+    {
+      value: 100,
+      suffix: '+',
+      label: 'Active Businesses',
+      description: 'Across Nigeria',
+    },
+    {
+      value: 24,
+      suffix: '/7',
+      label: 'Support Available',
+      description: 'Real humans, real help',
+    },
+    {
+      value: 4.9,
+      suffix: '/5',
+      label: 'Customer Rating',
+      description: 'Based on 200+ reviews',
+    },
+  ]
+
+function AnimatedCounter({
+  value,
+  prefix = '',
+  suffix = ''
+}: {
   value: number
   prefix?: string
-  suffix?: string 
+  suffix?: string
 }) {
   const [count, setCount] = useState(0)
   const [hasAnimated, setHasAnimated] = useState(false)
@@ -99,12 +99,11 @@ function AnimatedCounter({
 
 export default function ResultsStats() {
   return (
-    <section className="section-padding bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white relative overflow-hidden">
-      {/* Background Pattern */}
-      <div className="absolute inset-0 opacity-10">
-        <div className="absolute inset-0" style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-        }} />
+    <section className="section-padding bg-slate-900 text-white relative overflow-hidden">
+      {/* Background Ambience */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-0 right-0 w-[50%] h-[50%] bg-primary-500/5 rounded-full blur-[120px]" />
+        <div className="absolute bottom-0 left-0 w-[50%] h-[50%] bg-secondary-500/5 rounded-full blur-[120px]" />
       </div>
 
       <div className="container-custom relative z-10">
@@ -115,7 +114,7 @@ export default function ResultsStats() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.5 }}
-            className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4"
+            className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4 text-white"
           >
             Results That Speak for Themselves
           </motion.h2>
@@ -170,8 +169,8 @@ export default function ResultsStats() {
         >
           <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-8 md:p-12 border border-white/10 max-w-4xl mx-auto">
             <p className="text-xl md:text-2xl text-white mb-6">
-              <span className="font-bold text-secondary">"Since we started using SmartFlow, 
-              we haven't missed a single customer inquiry."</span>
+              <span className="font-bold text-secondary">"Since we started using SmartFlow,
+                we haven't missed a single customer inquiry."</span>
             </p>
             <p className="text-gray-300">
               — Chinedu Okafor, Owner of Mama's Kitchen (Lagos)

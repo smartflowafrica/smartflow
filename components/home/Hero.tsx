@@ -4,14 +4,14 @@ import Link from 'next/link'
 import { motion } from 'framer-motion'
 
 const heroData = {
-  preHeading: "AI Automation for Nigerian Businesses",
+
   heading: "Automate Everything. Grow Faster.",
   subheading: "Transform your business operations with AI-powered automation. Save time, reduce costs, and scale effortlessly.",
   stats: [
     { value: "100+", label: "Businesses Automated" },
     { value: "99.5%", label: "Uptime Guarantee" },
     { value: "24/7", label: "AI Support" },
-    { value: "₦0", label: "Setup Commission" }
+
   ],
   cta: [
     { text: "Get Started Free", type: "primary", link: "/auth/signup" },
@@ -33,17 +33,7 @@ export default function Hero() {
       <div className="container-custom relative z-10 pt-32 pb-20">
         <div className="flex flex-col items-center text-center max-w-5xl mx-auto">
 
-          {/* Badge */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/80 backdrop-blur-sm border border-slate-200 shadow-sm mb-8 hover:bg-white transition-colors cursor-default"
-          >
-            <span className="flex h-2 w-2 rounded-full bg-green-500 animate-pulse"></span>
-            <span className="text-sm font-medium text-slate-600 tracking-wide">
-              {heroData.preHeading}
-            </span>
-          </motion.div>
+
 
           {/* Main Heading */}
           <motion.h1
@@ -97,7 +87,7 @@ export default function Hero() {
             transition={{ delay: 0.4 }}
             className="w-full glass-card p-8 md:p-10"
           >
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12 divide-y md:divide-y-0 md:divide-x divide-slate-100">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12 divide-y md:divide-y-0 md:divide-x divide-slate-100">
               {heroData.stats.map((stat, index) => (
                 <div key={index} className="pt-8 md:pt-0 first:pt-0">
                   <div className="text-3xl sm:text-4xl font-bold text-slate-900 mb-1 tabular-nums tracking-tight">

@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { Bars3Icon, XMarkIcon, ChevronDownIcon } from '@heroicons/react/24/outline'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -61,9 +62,26 @@ const navigation = [
 export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  // Lock body scroll when mobile menu is open
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = 'unset'
+    }
+    return () => {
+      document.body.style.overflow = 'unset'
+    }
+  }, [mobileMenuOpen])
 
   return (
-    <header className="fixed top-0 inset-x-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-200/50 shadow-sm transition-all duration-300">
+    <header className="fixed top-0 inset-x-0 z-40 bg-white/80 backdrop-blur-md border-b border-slate-200/50 shadow-sm transition-all duration-300">
       <nav className="container-custom" aria-label="Global">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
@@ -82,11 +100,11 @@ export default function Header() {
           <div className="flex lg:hidden">
             <button
               type="button"
-              className="-m-2.5 inline-flex items-center justify-center rounded-md p-2.5 text-gray-700"
+              className="-m-2.5 inline-flex items-center justify-center rounded-md p-2.5 text-slate-700 hover:bg-slate-100 transition-colors"
               onClick={() => setMobileMenuOpen(true)}
             >
               <span className="sr-only">Open main menu</span>
-              <Bars3Icon className="h-6 w-6" aria-hidden="true" />
+              <Bars3Icon className="h-8 w-8" aria-hidden="true" strokeWidth={2} />
             </button>
           </div>
 
@@ -163,108 +181,113 @@ export default function Header() {
         </div>
       </nav>
 
-      {/* Mobile menu */}
-      <AnimatePresence>
-        {mobileMenuOpen && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 z-50 bg-black/20 backdrop-blur-sm lg:hidden"
-              onClick={() => setMobileMenuOpen(false)}
-            />
-            <motion.div
-              initial={{ x: '100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="fixed inset-y-0 right-0 z-50 w-full overflow-y-auto bg-white px-6 py-6 sm:max-w-sm sm:ring-1 sm:ring-gray-900/10 lg:hidden"
-            >
-              <div className="flex items-center justify-between h-16">
-                <Link href="/" className="-m-1.5 p-1.5" onClick={() => setMobileMenuOpen(false)}>
-                  <span className="sr-only">SmartFlow Africa</span>
-                  <img
-                    src="/newlogo.png"
-                    alt="SmartFlow Africa Logo"
-                    className="h-56 w-56 object-contain"
-                  />
-                </Link>
-                <button
-                  type="button"
-                  className="-m-2.5 rounded-md p-2.5 text-gray-700"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  <span className="sr-only">Close menu</span>
-                  <XMarkIcon className="h-6 w-6" aria-hidden="true" />
-                </button>
-              </div>
-              <div className="mt-6 flow-root">
-                <div className="-my-6 divide-y divide-gray-500/10">
-                  <div className="space-y-2 py-6">
-                    {navigation.map((item) => (
-                      <div key={item.label}>
-                        {item.type === 'link' ? (
-                          <Link
-                            href={item.url!}
-                            className="-mx-3 block rounded-lg px-3 py-2 text-base font-semibold leading-7 text-gray-900 hover:bg-gray-50"
-                            onClick={() => setMobileMenuOpen(false)}
-                          >
-                            {item.label}
-                          </Link>
-                        ) : (
-                          <div>
-                            <button
-                              onClick={() => setOpenDropdown(openDropdown === item.label ? null : item.label)}
-                              className="-mx-3 flex w-full items-center justify-between rounded-lg px-3 py-2 text-base font-semibold leading-7 text-gray-900 hover:bg-gray-50"
+      {/* Mobile menu - Rendered in Portal */}
+      {mounted && createPortal(
+        <AnimatePresence mode="wait">
+          {mobileMenuOpen && (
+            <>
+              <motion.div
+                key="mobile-backdrop"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 z-[999] bg-black/40 backdrop-blur-sm lg:hidden"
+                onClick={() => setMobileMenuOpen(false)}
+              />
+              <motion.div
+                key="mobile-drawer"
+                initial={{ x: '100%' }}
+                animate={{ x: 0 }}
+                exit={{ x: '100%' }}
+                transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                className="fixed inset-y-0 right-0 z-[1000] w-full overflow-y-auto bg-white px-6 py-6 sm:max-w-sm shadow-2xl lg:hidden"
+              >
+                <div className="flex items-center justify-between h-24">
+                  <Link href="/" className="-m-1.5 p-1.5" onClick={() => setMobileMenuOpen(false)}>
+                    <span className="sr-only">SmartFlow Africa</span>
+                    <img
+                      src="/newlogo.png"
+                      alt="SmartFlow Africa Logo"
+                      className="h-16 w-auto object-contain"
+                    />
+                  </Link>
+                  <button
+                    type="button"
+                    className="-m-2.5 rounded-md p-2.5 text-slate-700 hover:bg-slate-100 transition-colors"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <span className="sr-only">Close menu</span>
+                    <XMarkIcon className="h-6 w-6" aria-hidden="true" />
+                  </button>
+                </div>
+                <div className="mt-6 flow-root">
+                  <div className="-my-6 divide-y divide-gray-500/10">
+                    <div className="space-y-2 py-6">
+                      {navigation.map((item) => (
+                        <div key={item.label}>
+                          {item.type === 'link' ? (
+                            <Link
+                              href={item.url!}
+                              className="-mx-3 block rounded-lg px-3 py-2 text-base font-semibold leading-7 text-gray-900 hover:bg-gray-50"
+                              onClick={() => setMobileMenuOpen(false)}
                             >
                               {item.label}
-                              <ChevronDownIcon
-                                className={`h-5 w-5 transform transition-transform ${openDropdown === item.label ? 'rotate-180' : ''
-                                  }`}
-                              />
-                            </button>
-                            {openDropdown === item.label && (
-                              <div className="mt-2 space-y-2 pl-6">
-                                {item.items?.map((subItem) => (
-                                  <Link
-                                    key={subItem.label}
-                                    href={subItem.url}
-                                    className="block rounded-lg px-3 py-2 text-sm leading-7 text-gray-600 hover:bg-gray-50"
-                                    onClick={() => setMobileMenuOpen(false)}
-                                  >
-                                    {subItem.label}
-                                  </Link>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                  <div className="py-6 space-y-4">
-                    <Link
-                      href="/login"
-                      className="btn-secondary text-center block w-full"
-                      onClick={() => setMobileMenuOpen(false)}
-                    >
-                      Log in
-                    </Link>
-                    <Link
-                      href="/auth/signup"
-                      className="btn-primary text-center block w-full"
-                      onClick={() => setMobileMenuOpen(false)}
-                    >
-                      Sign Up
-                    </Link>
+                            </Link>
+                          ) : (
+                            <div>
+                              <button
+                                onClick={() => setOpenDropdown(openDropdown === item.label ? null : item.label)}
+                                className="-mx-3 flex w-full items-center justify-between rounded-lg px-3 py-2 text-base font-semibold leading-7 text-gray-900 hover:bg-gray-50"
+                              >
+                                {item.label}
+                                <ChevronDownIcon
+                                  className={`h-5 w-5 transform transition-transform ${openDropdown === item.label ? 'rotate-180' : ''
+                                    }`}
+                                />
+                              </button>
+                              {openDropdown === item.label && (
+                                <div className="mt-2 space-y-2 pl-6 border-l-2 border-gray-100 ml-3">
+                                  {item.items?.map((subItem) => (
+                                    <Link
+                                      key={subItem.label}
+                                      href={subItem.url}
+                                      className="block rounded-lg px-3 py-2 text-sm leading-7 text-gray-600 hover:bg-gray-50 hover:text-primary transition-colors"
+                                      onClick={() => setMobileMenuOpen(false)}
+                                    >
+                                      {subItem.label}
+                                    </Link>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    <div className="py-6 space-y-4">
+                      <Link
+                        href="/login"
+                        className="btn-secondary text-center block w-full justify-center"
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        Log in
+                      </Link>
+                      <Link
+                        href="/auth/signup"
+                        className="btn-primary text-center block w-full justify-center"
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        Sign Up
+                      </Link>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </header>
   )
 }
