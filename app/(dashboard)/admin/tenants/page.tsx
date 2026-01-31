@@ -31,28 +31,49 @@ function TenantsContent() {
         fetchClients();
     }, [router]);
 
+    const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; clientId: string | null; name: string | null }>({
+        isOpen: false,
+        clientId: null,
+        name: null
+    });
+
+    const [isDeleting, setIsDeleting] = useState(false);
+
+    // Open Modal
+    function openDeleteModal(clientId: string, name: string) {
+        setDeleteModal({ isOpen: true, clientId, name });
+    }
+
+    // Close Modal
+    function closeDeleteModal() {
+        setDeleteModal({ isOpen: false, clientId: null, name: null });
+    }
+
+    // Actual Delete Logic
+    async function confirmDelete() {
+        if (!deleteModal.clientId) return;
+
+        setIsDeleting(true);
+        try {
+            const res = await fetch(`/api/clients/${deleteModal.clientId}`, { method: 'DELETE' });
+            if (!res.ok) throw new Error('Failed to delete');
+
+            toast.success('Client de-boarded successfully');
+            setClients(prev => prev.filter(c => c.id !== deleteModal.clientId));
+            router.refresh();
+            closeDeleteModal();
+        } catch (error) {
+            console.error(error);
+            toast.error('Failed to delete client');
+        } finally {
+            setIsDeleting(false);
+        }
+    }
+
     // Apply Filter
     const filteredClients = filterId
         ? clients.filter(c => c.id === filterId)
         : clients;
-
-    async function handleDelete(clientId: string, name: string) {
-        if (!confirm(`Are you sure you want to DE-BOARD (Delete) client "${name}"?\n\nThis action is irreversible. All their data (Users, Jobs, History) will be wiped.`)) {
-            return;
-        }
-
-        try {
-            const res = await fetch(`/api/clients/${clientId}`, { method: 'DELETE' });
-            if (!res.ok) throw new Error('Failed to delete');
-
-            toast.success('Client de-boarded successfully');
-            setClients(prev => prev.filter(c => c.id !== clientId));
-            router.refresh();
-        } catch (error) {
-            console.error(error);
-            toast.error('Failed to delete client');
-        }
-    }
 
     return (
         <div className="space-y-6 p-6">
@@ -167,7 +188,7 @@ function TenantsContent() {
                                         </td>
                                         <td className="px-6 py-4 text-right">
                                             <button
-                                                onClick={() => handleDelete(client.id, client.businessName)}
+                                                onClick={() => openDeleteModal(client.id, client.businessName)}
                                                 className="text-slate-400 hover:text-red-600 transition p-2 hover:bg-red-50 rounded"
                                                 title="De-board (Delete) Client"
                                             >
@@ -180,6 +201,53 @@ function TenantsContent() {
                                 ))}
                             </tbody>
                         </table>
+                    </div>
+                </div>
+            )}
+
+            {/* Custom Modern Delete Confirmation Modal */}
+            {deleteModal.isOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 animate-in fade-in zoom-in-95 duration-200">
+                        <div className="w-12 h-12 bg-red-100 text-red-600 rounded-full flex items-center justify-center mb-4">
+                            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                        </div>
+
+                        <h3 className="text-xl font-bold text-slate-900 mb-2">De-board Client?</h3>
+                        <p className="text-slate-500 mb-6">
+                            Are you sure you want to de-board <strong>{deleteModal.name}</strong>?
+                            <br /><br />
+                            <span className="text-red-600 font-medium bg-red-50 px-2 py-1 rounded">
+                                Warning: This action is irreversible.
+                            </span>
+                            <br />All their data (Users, Jobs, History) will be wiped instantly.
+                        </p>
+
+                        <div className="flex gap-3 justify-end">
+                            <button
+                                onClick={closeDeleteModal}
+                                disabled={isDeleting}
+                                className="px-4 py-2 text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg font-medium transition disabled:opacity-50"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={confirmDelete}
+                                disabled={isDeleting}
+                                className="px-4 py-2 bg-red-600 text-white hover:bg-red-700 rounded-lg font-medium shadow-md hover:shadow-lg transition flex items-center gap-2 disabled:opacity-50"
+                            >
+                                {isDeleting ? (
+                                    <>
+                                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                        Deleting...
+                                    </>
+                                ) : (
+                                    'De-board Client'
+                                )}
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
