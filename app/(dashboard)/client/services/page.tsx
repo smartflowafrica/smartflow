@@ -158,7 +158,7 @@ export default function ServicesPage() {
         const formData = new FormData(e.currentTarget);
 
         const metadata = images.length > 0 ? { images } : undefined;
-        const postToStatus = formData.get('postToStatus') === 'on';
+        // Removed postToStatus as it's not in the schema
 
         const data = {
             name: formData.get('name'),
@@ -168,7 +168,6 @@ export default function ServicesPage() {
             duration: parseInt(formData.get('duration') as string),
             category: formData.get('category'),
             metadata,
-            postToStatus,
             pricingRules: pricingRules.filter(r => r.location && r.price).map(r => ({ location: r.location, price: parseFloat(r.price.replace(/,/g, '')) })),
             isActive: true
         };
@@ -313,164 +312,166 @@ export default function ServicesPage() {
             {/* Add/Edit Modal */}
             {isModalOpen && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-                        <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh]">
+                        <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50 flex-shrink-0">
                             <h2 className="font-bold text-lg">
                                 {editingService ? `Edit ${serviceLabel}` : `Add New ${serviceLabel}`}
                             </h2>
                             <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600">×</button>
                         </div>
 
-                        <form onSubmit={handleSave} className="p-6 space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">{serviceLabel} Name</label>
-                                <input
-                                    name="name"
-                                    defaultValue={editingService?.name}
-                                    required
-                                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                                    placeholder="e.g. Oil Change"
-                                />
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
+                        <div className="overflow-y-auto p-6">
+                            <form onSubmit={handleSave} className="space-y-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Price (₦) <span className="text-slate-400 font-normal">(Leave empty for text-based/location pricing)</span></label>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">{serviceLabel} Name</label>
                                     <input
-                                        name="price"
-                                        type="text"
-                                        value={priceDisplay}
-                                        onChange={(e) => handlePriceChange(e, setPriceDisplay)}
-                                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                                        placeholder="Optional"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Commitment Fee (Optional)</label>
-                                    <input
-                                        name="commitmentFee"
-                                        type="text"
-                                        value={feeDisplay}
-                                        onChange={(e) => handlePriceChange(e, setFeeDisplay)}
-                                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                                        placeholder="0"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Duration (mins)</label>
-                                    <input
-                                        name="duration"
-                                        type="number"
-                                        defaultValue={editingService?.duration || 30}
+                                        name="name"
+                                        defaultValue={editingService?.name}
                                         required
                                         className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                                        placeholder="30"
+                                        placeholder="e.g. Oil Change"
                                     />
                                 </div>
-                            </div>
 
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Category</label>
-                                <select
-                                    name="category"
-                                    defaultValue={editingService?.category || serviceCategories[0]}
-                                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
-                                >
-                                    {serviceCategories.map((cat) => (
-                                        <option key={cat} value={cat}>{cat}</option>
-                                    ))}
-                                </select>
-                            </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">Price (₦) <span className="text-slate-400 font-normal">(Leave empty for text-based/location pricing)</span></label>
+                                        <input
+                                            name="price"
+                                            type="text"
+                                            value={priceDisplay}
+                                            onChange={(e) => handlePriceChange(e, setPriceDisplay)}
+                                            className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                            placeholder="Optional"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">Commitment Fee (Optional)</label>
+                                        <input
+                                            name="commitmentFee"
+                                            type="text"
+                                            value={feeDisplay}
+                                            onChange={(e) => handlePriceChange(e, setFeeDisplay)}
+                                            className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                            placeholder="0"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">Duration (mins)</label>
+                                        <input
+                                            name="duration"
+                                            type="number"
+                                            defaultValue={editingService?.duration || 30}
+                                            required
+                                            className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                            placeholder="30"
+                                        />
+                                    </div>
+                                </div>
 
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
-                                <textarea
-                                    name="description"
-                                    defaultValue={editingService?.description}
-                                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none h-24 resize-none"
-                                    placeholder="Describe what's included..."
-                                />
-                            </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Category</label>
+                                    <select
+                                        name="category"
+                                        defaultValue={editingService?.category || serviceCategories[0]}
+                                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                                    >
+                                        {serviceCategories.map((cat) => (
+                                            <option key={cat} value={cat}>{cat}</option>
+                                        ))}
+                                    </select>
+                                </div>
 
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Product Images</label>
-                                <div className="space-y-3">
-                                    <div className="flex flex-wrap gap-2">
-                                        {images.map((url, i) => (
-                                            <div key={i} className="relative group w-20 h-20 border rounded-lg overflow-hidden bg-slate-100">
-                                                <img src={url} alt="Product" className="w-full h-full object-cover" />
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
+                                    <textarea
+                                        name="description"
+                                        defaultValue={editingService?.description}
+                                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none h-24 resize-none"
+                                        placeholder="Describe what's included..."
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Product Images</label>
+                                    <div className="space-y-3">
+                                        <div className="flex flex-wrap gap-2">
+                                            {images.map((url, i) => (
+                                                <div key={i} className="relative group w-20 h-20 border rounded-lg overflow-hidden bg-slate-100">
+                                                    <img src={url} alt="Product" className="w-full h-full object-cover" />
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleRemoveImage(i)}
+                                                        className="absolute top-0 right-0 bg-red-500 text-white p-1 rounded-bl opacity-0 group-hover:opacity-100 transition-opacity"
+                                                    >
+                                                        <Trash2 size={12} />
+                                                    </button>
+                                                </div>
+                                            ))}
+                                            <label className="w-20 h-20 border-2 border-dashed border-slate-300 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-colors">
+                                                {isUploading ? <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500" /> : <Plus size={24} className="text-slate-400" />}
+                                                <input type="file" className="hidden" accept="image/*" multiple onChange={handleFileUpload} />
+                                            </label>
+                                        </div>
+                                        <p className="text-xs text-slate-400">Upload multiple images. They will be sent as an album.</p>
+                                    </div>
+                                </div>
+
+                                {/* Dynamic Pricing Rules */}
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Location-Based Pricing (Optional)</label>
+                                    <div className="space-y-2">
+                                        {pricingRules.map((rule, index) => (
+                                            <div key={index} className="flex gap-2 items-center">
+                                                <input
+                                                    placeholder="Location (e.g. Lekki)"
+                                                    value={rule.location}
+                                                    onChange={(e) => updatePricingRule(index, 'location', e.target.value)}
+                                                    className="flex-1 px-3 py-2 border rounded-lg text-sm"
+                                                />
+                                                <input
+                                                    type="number"
+                                                    placeholder="Price"
+                                                    value={rule.price}
+                                                    onChange={(e) => updatePricingRule(index, 'price', e.target.value)}
+                                                    className="w-24 px-3 py-2 border rounded-lg text-sm"
+                                                />
                                                 <button
                                                     type="button"
-                                                    onClick={() => handleRemoveImage(i)}
-                                                    className="absolute top-0 right-0 bg-red-500 text-white p-1 rounded-bl opacity-0 group-hover:opacity-100 transition-opacity"
+                                                    onClick={() => removePricingRule(index)}
+                                                    className="text-red-500 hover:text-red-700 p-1"
                                                 >
-                                                    <Trash2 size={12} />
+                                                    <Trash2 size={16} />
                                                 </button>
                                             </div>
                                         ))}
-                                        <label className="w-20 h-20 border-2 border-dashed border-slate-300 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-colors">
-                                            {isUploading ? <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500" /> : <Plus size={24} className="text-slate-400" />}
-                                            <input type="file" className="hidden" accept="image/*" multiple onChange={handleFileUpload} />
-                                        </label>
+                                        <button
+                                            type="button"
+                                            onClick={addPricingRule}
+                                            className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
+                                        >
+                                            <Plus size={16} /> Add Location Price
+                                        </button>
                                     </div>
-                                    <p className="text-xs text-slate-400">Upload multiple images. They will be sent as an album.</p>
                                 </div>
-                            </div>
 
-                            {/* Dynamic Pricing Rules */}
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Location-Based Pricing (Optional)</label>
-                                <div className="space-y-2">
-                                    {pricingRules.map((rule, index) => (
-                                        <div key={index} className="flex gap-2 items-center">
-                                            <input
-                                                placeholder="Location (e.g. Lekki)"
-                                                value={rule.location}
-                                                onChange={(e) => updatePricingRule(index, 'location', e.target.value)}
-                                                className="flex-1 px-3 py-2 border rounded-lg text-sm"
-                                            />
-                                            <input
-                                                type="number"
-                                                placeholder="Price"
-                                                value={rule.price}
-                                                onChange={(e) => updatePricingRule(index, 'price', e.target.value)}
-                                                className="w-24 px-3 py-2 border rounded-lg text-sm"
-                                            />
-                                            <button
-                                                type="button"
-                                                onClick={() => removePricingRule(index)}
-                                                className="text-red-500 hover:text-red-700 p-1"
-                                            >
-                                                <Trash2 size={16} />
-                                            </button>
-                                        </div>
-                                    ))}
+                                <div className="pt-4 flex gap-3 sticky bottom-0 bg-white pb-2">
                                     <button
                                         type="button"
-                                        onClick={addPricingRule}
-                                        className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
+                                        onClick={() => setIsModalOpen(false)}
+                                        className="flex-1 px-4 py-2 border border-slate-200 rounded-lg hover:bg-slate-50 font-medium text-slate-600"
                                     >
-                                        <Plus size={16} /> Add Location Price
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
+                                    >
+                                        Save {serviceLabel}
                                     </button>
                                 </div>
-                            </div>
-
-                            <div className="pt-4 flex gap-3">
-                                <button
-                                    type="button"
-                                    onClick={() => setIsModalOpen(false)}
-                                    className="flex-1 px-4 py-2 border border-slate-200 rounded-lg hover:bg-slate-50 font-medium text-slate-600"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="submit"
-                                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
-                                >
-                                    Save {serviceLabel}
-                                </button>
-                            </div>
-                        </form>
+                            </form>
+                        </div>
                     </div>
                 </div>
             )}
