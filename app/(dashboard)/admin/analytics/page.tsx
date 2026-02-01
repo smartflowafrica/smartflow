@@ -80,7 +80,7 @@ async function getAnalyticsData() {
         }
 
         // Fill Client Growth
-        recentClients.forEach(c => {
+        recentClients.forEach((c: { createdAt: Date }) => {
             const key = format(c.createdAt, 'MMM dd');
             if (chartDataMap.has(key)) {
                 chartDataMap.get(key)!.clients += 1;
@@ -88,7 +88,7 @@ async function getAnalyticsData() {
         });
 
         // Fill Revenue Growth
-        recentRevenue.forEach(p => {
+        recentRevenue.forEach((p: { createdAt: Date, amount: number }) => {
             const key = format(p.createdAt, 'MMM dd');
             if (chartDataMap.has(key)) {
                 chartDataMap.get(key)!.revenue += (p.amount / 100); // Convert kobo to naira if needed, assuming amount is integer
@@ -99,7 +99,7 @@ async function getAnalyticsData() {
 
         // 2. Industry Data for Pie Chart
         const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
-        const industryData = industryBreakdown.map((i, index) => ({
+        const industryData = industryBreakdown.map((i: any, index: number) => ({
             name: i.businessType.replace('_', ' ').toLowerCase(),
             value: i._count.businessType,
             fill: COLORS[index % COLORS.length]
@@ -123,7 +123,7 @@ async function getAnalyticsData() {
                 automated: botMessagesCount,
                 avgResponseTime: 0
             },
-            topClients: topClients.map(c => ({
+            topClients: topClients.map((c: any) => ({
                 name: c.businessName,
                 value: c._count.customers,
                 industry: c.businessType
