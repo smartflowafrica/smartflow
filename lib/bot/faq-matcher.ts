@@ -56,7 +56,7 @@ export class FAQMatcher {
         faq: { question: string; keywords: string[] }
     ): number {
         const questionWords = this.tokenize(faq.question.toLowerCase());
-        const allKeywords = [...questionWords, ...faq.keywords.map(k => k.toLowerCase())];
+        const allKeywords = [...questionWords, ...faq.keywords.map((k: string) => k.toLowerCase())];
 
         if (allKeywords.length === 0) {
             return 0;
@@ -76,7 +76,7 @@ export class FAQMatcher {
 
         // Bonus for longer keyword matches (more specific)
         const longestKeywordMatch = allKeywords
-            .filter(k => lowerMessage.includes(k))
+            .filter((k: string) => lowerMessage.includes(k))
             .reduce((max, k) => Math.max(max, k.length), 0);
 
         const lengthBonus = longestKeywordMatch > 5 ? 0.1 : 0;
@@ -91,7 +91,7 @@ export class FAQMatcher {
         return text
             .replace(/[^\w\s]/g, ' ') // Remove punctuation
             .split(/\s+/)
-            .filter(word => word.length > 2); // Ignore very short words
+            .filter((word: string) => word.length > 2); // Ignore very short words
     }
 }
 

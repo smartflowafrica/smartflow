@@ -90,7 +90,7 @@ export function getOpenStatus(hours: Record<string, string>): string {
 
     // Parse Range "9:00 AM - 5:00 PM"
     try {
-        const parts = todayHours.split('-').map(p => p.trim());
+        const parts = todayHours.split('-').map((p: string) => p.trim());
         if (parts.length !== 2) return "Open"; // Fallback if format is weird
 
         const [startStr, endStr] = parts;

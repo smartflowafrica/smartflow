@@ -36,7 +36,7 @@ export async function POST(request: Request) {
             if (code === 'REAL_ESTATE') businessTypeEnum = 'REAL_ESTATE';
         }
 
-        const result = await prisma.$transaction(async (tx) => {
+        const result = await prisma.$transaction(async (tx: any) => {
             const client = await tx.client.create({
                 data: {
                     businessName: businessInfo.name,

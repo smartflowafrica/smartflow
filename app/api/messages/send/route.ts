@@ -30,7 +30,7 @@ export async function POST(request: Request) {
         }
 
         // 2. Transaction to ensure Customer exists and Message is logged
-        const message = await prisma.$transaction(async (tx) => {
+        const message = await prisma.$transaction(async (tx: any) => {
             // Upsert Customer
             let customer = await tx.customer.findUnique({
                 where: {

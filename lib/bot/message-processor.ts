@@ -435,7 +435,7 @@ export class MessageProcessor {
             const lowerText = text.toLowerCase().trim();
 
             // 1. Exact Match
-            const exact = services.find(s => s.name.toLowerCase() === lowerText);
+            const exact = services.find((s: any) => s.name.toLowerCase() === lowerText);
             if (exact) return exact;
 
             // 2. Numeric Match (1, 2, 3...)
@@ -455,7 +455,7 @@ export class MessageProcessor {
             }
 
             // 3. Contains Match
-            const containsMatch = services.find(s => lowerText.includes(s.name.toLowerCase()) || s.name.toLowerCase().includes(lowerText));
+            const containsMatch = services.find((s: any) => lowerText.includes(s.name.toLowerCase()) || s.name.toLowerCase().includes(lowerText));
             if (containsMatch) return containsMatch;
 
             return null;

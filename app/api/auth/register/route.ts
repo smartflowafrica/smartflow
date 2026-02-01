@@ -34,7 +34,7 @@ export async function POST(req: Request) {
 
         // Transaction: Create Client + Create User
         // We create a "Pending" client that will be filled in during onboarding
-        const result = await prisma.$transaction(async (tx) => {
+        const result = await prisma.$transaction(async (tx: any) => {
             const client = await tx.client.create({
                 data: {
                     businessName: `${name}'s Business`, // Placeholder

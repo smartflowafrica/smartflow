@@ -39,7 +39,7 @@ export async function DELETE(
         }
 
         // Transactional Delete
-        await prisma.$transaction(async (tx) => {
+        await prisma.$transaction(async (tx: any) => {
             // 1. Delete Users manually (since no Cascade)
             await tx.user.deleteMany({
                 where: { clientId: clientId }

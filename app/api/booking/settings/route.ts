@@ -60,7 +60,7 @@ export async function POST(request: Request) {
         }
 
         if (slots && Array.isArray(slots)) {
-            await prisma.$transaction(async (tx) => {
+            await prisma.$transaction(async (tx: any) => {
                 await tx.timeSlot.deleteMany({ where: { clientId } });
                 if (slots.length > 0) {
                     await tx.timeSlot.createMany({

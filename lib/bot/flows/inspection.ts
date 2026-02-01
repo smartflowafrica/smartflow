@@ -8,7 +8,7 @@ const findPriceForLocation = (rules: any[], userLocation: string): number | null
     const lowerLoc = userLocation.toLowerCase();
 
     // Check exact or partial match
-    const match = rules.find(r =>
+    const match = rules.find((r: any) =>
         r.location?.toLowerCase().includes(lowerLoc) ||
         lowerLoc.includes(r.location?.toLowerCase())
     );

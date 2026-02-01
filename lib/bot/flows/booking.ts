@@ -100,7 +100,7 @@ export class BookingFlow implements ChatFlow {
                         select: { name: true },
                         take: 5
                     });
-                    const serviceList = availableServices.map(s => `- ${s.name}`).join('\n');
+                    const serviceList = availableServices.map((s: any) => `- ${s.name}`).join('\n');
 
                     return {
                         response: `I couldn't find that service. Here are some services we offer:\n${serviceList}\n\nPlease type the name of the service you'd like.`,
@@ -350,7 +350,7 @@ export class BookingFlow implements ChatFlow {
             where: { clientId, isActive: true }
         });
         const lowerQuery = query.toLowerCase();
-        return services.find(s => s.name.toLowerCase().includes(lowerQuery));
+        return services.find((s: any) => s.name.toLowerCase().includes(lowerQuery));
     }
 
     private parseDate(input: string): string | null {
