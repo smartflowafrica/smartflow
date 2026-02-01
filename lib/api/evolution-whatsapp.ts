@@ -484,6 +484,9 @@ export class WhatsAppService {
                         // Ensure we don't have a plus
                         cleanFrom = rawFrom.replace(/^\+/, '');
                         formattedFrom = cleanFrom; // Keep LID format, no plus added
+
+                        // NEW ATTEMPT: If previous logic failed, maybe we can search DB for this LID?
+                        // (Implemented in webhook route: Priority 3)
                     }
                 }
             } else {

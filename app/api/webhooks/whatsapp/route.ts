@@ -208,10 +208,18 @@ export async function POST(req: Request) {
 
             if ((result.action === 'reply' || result.action === 'escalate') && result.response) {
                 // Send Reply via WhatsApp (Evolution) USING CORRECT INSTANCE
+                // FIX: Always prefer the User's Primary Phone Number if available, avoiding LID replies
+                let replyTo = from;
+                if (customer.phone && !customer.phone.includes('@lid') && customer.phone.length > 5) {
+                    replyTo = customer.phone;
+                }
+
+                console.log(`[Webhook] Reply Target: ${replyTo} (Original: ${from})`);
+
                 if (result.mediaUrls && result.mediaUrls.length > 0) {
-                    await replyWhatsapp.sendMedia(from, result.mediaUrls[0], result.response, client.id);
+                    await replyWhatsapp.sendMedia(replyTo, result.mediaUrls[0], result.response, client.id);
                 } else {
-                    await replyWhatsapp.sendMessage(from, result.response, client.id);
+                    await replyWhatsapp.sendMessage(replyTo, result.response, client.id);
                 }
 
                 // Auto-Switch to Human if low confidence OR explicit escalate action
