@@ -98,7 +98,7 @@ export async function createJob(rawParams: CreateJobParams) {
                 metadata: params.metadata,
                 vehicleId: params.vehicleId,
                 items: {
-                    create: params.items?.map(item => ({
+                    create: params.items?.map((item: any) => ({
                         productId: item.productId,
                         description: item.description,
                         quantity: item.quantity,

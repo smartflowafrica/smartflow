@@ -60,7 +60,7 @@ function TenantsContent() {
             if (!res.ok) throw new Error('Failed to delete');
 
             toast.success('Client de-boarded successfully');
-            setClients(prev => prev.filter(c => c.id !== deleteModal.clientId));
+            setClients(prev => prev.filter((c: any) => c.id !== deleteModal.clientId));
             router.refresh();
             closeDeleteModal();
         } catch (error) {
@@ -73,7 +73,7 @@ function TenantsContent() {
 
     // Apply Filter
     const filteredClients = filterId
-        ? clients.filter(c => c.id === filterId)
+        ? clients.filter((c: any) => c.id === filterId)
         : clients;
 
     return (
@@ -141,7 +141,7 @@ function TenantsContent() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
-                                {filteredClients.map((client) => (
+                                {filteredClients.map((client: any) => (
                                     <tr key={client.id} className="hover:bg-slate-50 transition">
                                         <td className="px-6 py-4">
                                             <div className="font-medium text-slate-900">{client.businessName}</div>

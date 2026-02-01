@@ -38,10 +38,10 @@ export default function AdminBillingPage() {
 
     // Stats
     const totalRevenue = payments
-        .filter(p => p.status === 'success')
-        .reduce((sum, p) => sum + (p.amount / 100), 0); // Assuming amount is in kobo/cents
+        .filter((p: any) => p.status === 'success')
+        .reduce((sum: number, p: any) => sum + (p.amount / 100), 0); // Assuming amount is in kobo/cents
 
-    const failedCount = payments.filter(p => p.status !== 'success').length;
+    const failedCount = payments.filter((p: any) => p.status !== 'success').length;
 
     return (
         <div className="space-y-6 p-6">
@@ -134,7 +134,7 @@ export default function AdminBillingPage() {
                                     </td>
                                 </tr>
                             ) : (
-                                payments.map((payment) => (
+                                payments.map((payment: any) => (
                                     <tr key={payment.id} className="hover:bg-slate-50 transition">
                                         <td className="px-6 py-4 whitespace-nowrap text-slate-500">
                                             {format(new Date(payment.createdAt), 'MMM dd, yyyy HH:mm')}
@@ -156,8 +156,8 @@ export default function AdminBillingPage() {
                                         </td>
                                         <td className="px-6 py-4">
                                             <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium capitalize ${payment.status === 'success'
-                                                    ? 'bg-green-100 text-green-700'
-                                                    : 'bg-red-100 text-red-700'
+                                                ? 'bg-green-100 text-green-700'
+                                                : 'bg-red-100 text-red-700'
                                                 }`}>
                                                 {payment.status === 'success' ? <CheckCircle size={12} /> : <AlertTriangle size={12} />}
                                                 {payment.status}

@@ -134,7 +134,7 @@ export default function SectorsPage() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
-                                {sectors.map((sector) => (
+                                {sectors.map((sector: BusinessSector) => (
                                     <tr key={sector.id} className="hover:bg-slate-50 transition">
                                         <td className="px-6 py-4">
                                             <span className="text-3xl">{sector.icon}</span>

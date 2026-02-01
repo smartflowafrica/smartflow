@@ -109,7 +109,7 @@ export default function BranchSettingsPage() {
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {branches.map(branch => (
+                    {branches.map((branch: Branch) => (
                         <div key={branch.id} className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
                             <div className="flex justify-between items-start mb-4">
                                 <div className="p-2 bg-blue-50 rounded-lg">
