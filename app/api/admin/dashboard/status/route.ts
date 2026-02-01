@@ -43,7 +43,7 @@ export async function GET() {
 
         // Map client names to instances
         const enrichedInstances = instances.map((inst: any) => {
-            const client = clients.find(c => c.integrations?.whatsappInstanceId === inst.instance.instanceName);
+            const client = clients.find((c: any) => c.integrations?.whatsappInstanceId === inst.instance.instanceName);
             return {
                 ...inst,
                 clientName: client?.businessName || 'Unknown / Unlinked',
@@ -62,7 +62,7 @@ export async function GET() {
         });
 
         // Enhance logs with client names if possible
-        const logsWithNames = await Promise.all(logs.map(async (log) => {
+        const logsWithNames = await Promise.all(logs.map(async (log: any) => {
             let clientName = 'System';
             if (log.clientId) {
                 const c = await prisma.client.findUnique({ where: { id: log.clientId }, select: { businessName: true } });
