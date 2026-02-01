@@ -129,6 +129,21 @@ export async function POST(req: Request) {
             });
         }
 
+        // AUTO-CORRECT: If customer exists but has an LID as phone, and we have a better 'from' now
+        if (customer && customer.phone && customer.phone.includes('@lid') && !from.includes('@lid')) {
+            console.log(`[Webhook] Auto-correcting Customer Phone from LID (${customer.phone}) to Real (${from})`);
+            try {
+                const updated = await prisma.customer.update({
+                    where: { id: customer.id },
+                    data: { phone: from }
+                });
+                customer = updated; // Use updated record
+            } catch (e) {
+                console.error('[Webhook] Failed to auto-correct phone', e);
+            }
+        }
+
+
         if (!customer) throw new Error('Failed to resolve customer');
 
         // Find or Create Conversation

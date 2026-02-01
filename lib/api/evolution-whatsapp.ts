@@ -487,6 +487,21 @@ export class WhatsAppService {
 
                         // NEW ATTEMPT: If previous logic failed, maybe we can search DB for this LID?
                         // (Implemented in webhook route: Priority 3)
+
+                        // FINAL SAFETY: If we still have an LID here, we should try one last time to resolve it using the 'chat/find' endpoint which might be slower but more accurate
+                        try {
+                            if (!cleanFrom || cleanFrom.includes('@lid')) {
+                                console.log(`[Webhook] Deep Resolve for LID: ${rawFrom}`);
+                                const deepResolve = await this.resolveLidToNumber(rawFrom);
+                                if (deepResolve) {
+                                    console.log(`[Webhook] Deep Resolve Success: ${deepResolve}`);
+                                    cleanFrom = deepResolve.split('@')[0];
+                                    formattedFrom = '+' + cleanFrom;
+                                }
+                            }
+                        } catch (e) {
+                            console.error('[Webhook] Deep Resolve Failed', e);
+                        }
                     }
                 }
             } else {
