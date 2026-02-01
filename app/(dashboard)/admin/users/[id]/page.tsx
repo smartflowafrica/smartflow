@@ -4,6 +4,7 @@ import { Mail, Shield, Building2, Calendar, User as UserIcon, ArrowLeft, Activit
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import UserAuthControl from '@/components/admin/users/UserAuthControl';
+import { SystemLog } from '@prisma/client';
 
 export const dynamic = 'force-dynamic';
 
@@ -146,7 +147,7 @@ export default async function UserDetailsPage({ params }: { params: { id: string
                             </div>
                         ) : (
                             <div className="divide-y divide-slate-100">
-                                {activities.map((activity) => (
+                                {activities.map((activity: SystemLog) => (
                                     <div key={activity.id} className="p-4 hover:bg-slate-50 transition-colors">
                                         <div className="flex items-start gap-4">
                                             <div className={`p-2 rounded-lg bg-slate-100 flex-shrink-0`}>
