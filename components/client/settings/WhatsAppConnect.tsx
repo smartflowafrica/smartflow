@@ -14,7 +14,7 @@ export default function WhatsAppConnect({ initialStatus = 'disconnected' }: What
     const [qrCode, setQrCode] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [polling, setPolling] = useState(false);
-    const [debugData, setDebugData] = useState<any>(null);
+
 
 
     // Check status on mount
@@ -25,7 +25,7 @@ export default function WhatsAppConnect({ initialStatus = 'disconnected' }: What
                 const res = await fetch('/api/whatsapp/instance/status');
                 const data = await res.json();
                 console.log('[WhatsAppConnect] Status Check:', data);
-                setDebugData(data);
+
 
 
                 if (data.state === 'open') {
@@ -54,7 +54,7 @@ export default function WhatsAppConnect({ initialStatus = 'disconnected' }: What
                 try {
                     const res = await fetch('/api/whatsapp/instance/status');
                     const data = await res.json();
-                    setDebugData(data);
+
 
 
                     if (data.state === 'open') {
@@ -207,17 +207,9 @@ export default function WhatsAppConnect({ initialStatus = 'disconnected' }: What
                         </button>
                     </div>
 
-                    <div className="mb-4">
-                        <details className="text-xs text-slate-400 cursor-pointer">
-                            <summary>Debug Details</summary>
-                            <pre className="mt-2 p-2 bg-slate-50 rounded border overflow-auto max-h-32">
-                                {JSON.stringify(debugData, null, 2)}
-                            </pre>
-                        </details>
-                    </div>
-
 
                     {!qrCode && (
+
                         <button
                             onClick={handleConnect}
                             disabled={loading}
