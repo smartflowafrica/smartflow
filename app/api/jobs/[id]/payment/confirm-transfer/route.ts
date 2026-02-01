@@ -3,12 +3,22 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { WhatsAppService } from '@/lib/api/evolution-whatsapp';
+import { RateLimiter } from '@/lib/services/rate-limiter';
+import { globalLimiter } from '@/lib/rate-limit';
 
 export async function POST(
     request: NextRequest,
     { params }: { params: { id: string } }
 ) {
     try {
+        // 1. Security: IP-based Rate Limiting (DoS Protection)
+        const ip = request.headers.get('x-forwarded-for') || 'unknown';
+        try {
+            await globalLimiter.consume(ip);
+        } catch (rlError) {
+            return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+        }
+
         const jobId = params.id;
 
         // No strict auth required here as this is a public payment page action
@@ -36,6 +46,19 @@ export async function POST(
             return NextResponse.json({ error: 'Customer phone not found' }, { status: 400 });
         }
 
+        // 2. Security: Recipient-based Rate Limiting (Spam Protection)
+        const rateLimiter = new RateLimiter();
+        const { allowed, waitMs } = await rateLimiter.canSend(customerPhone);
+
+        if (!allowed) {
+            console.warn(`[Security] Rate limit exceeded for ${customerPhone}`);
+            // Fail silently or with generic message to avoid leaking info, but for UX we might want to be honest
+            // Since this is triggered by user button click, we can be honest.
+            return NextResponse.json({
+                error: `Please wait ${Math.ceil((waitMs || 0) / 60000)} minutes before requesting again.`
+            }, { status: 429 });
+        }
+
         // Friendly / Smart Conversation Logic
         const message = `Hi ${customerName}! 👋\n\nThanks for initiating the transfer for ${businessName}.\n\nCould you please help us by uploading your proof of payment (screenshot/receipt) right here? 📸\n\nThis will help us confirm your payment faster. Thank you!`;
 
@@ -47,6 +70,9 @@ export async function POST(
             console.log(`[Confirm Transfer] Sending request to ${customerPhone} via instance ${instanceId || 'DEFAULT'}`);
 
             await whatsapp.sendMessage(customerPhone, message, job.clientId);
+
+            // Record usage for rate limiter
+            await rateLimiter.recordSend(customerPhone, 'PAYMENT_PROOF_REQUEST');
 
             // Log interaction
             await prisma.message.create({

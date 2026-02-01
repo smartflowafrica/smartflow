@@ -9,10 +9,18 @@ export async function POST(request: Request, { params }: { params: { id: string 
         const jobId = params.id;
         if (!jobId) return NextResponse.json({ error: 'Job ID required' }, { status: 400 });
 
-        const session = await getServerSession(authOptions);
-        if (!session?.user) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        // 1. Security: IP-based Rate Limiting (DoS Protection)
+        const ip = request.headers.get('x-forwarded-for') || 'unknown';
+        try {
+            const { globalLimiter } = await import('@/lib/rate-limit');
+            await globalLimiter.consume(ip);
+        } catch (rlError) {
+            return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
         }
+
+        // NOTE: This route must be public for Customers to pay. 
+        // We rely on the Job ID (uuid) and implicit security of the payment flow.
+        // Removed getServerSession check.
 
         const job = await prisma.job.findUnique({
             where: { id: jobId },
