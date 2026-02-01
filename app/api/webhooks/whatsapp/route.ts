@@ -109,13 +109,24 @@ export async function POST(req: Request) {
         }
 
         // 3.5. CRITICAL FIX: Ignore Self-Messages / Echoes
-        // If 'from' (Customer Phone) matches the Client's WhatsApp Number, it's a self-message or sync echo.
-        // We must NOT treat the business as a customer.
+        // Normalized comparison using the Service's logic (handles 080 -> 234)
         if (client.integrations?.whatsappNumber) {
-            const clientNum = client.integrations.whatsappNumber.replace(/\D/g, '');
-            const fromNum = from.replace(/\D/g, ''); // 'from' is already +normalized but safe to strip
-            if (clientNum && fromNum.includes(clientNum)) {
-                console.log(`[Webhook] Ignored Self-Message / Echo from ${from} (Matched Client Number)`);
+            const clientNumRaw = client.integrations.whatsappNumber;
+            const fromNumRaw = from;
+
+            const normClient = whatsapp.formatPhone(clientNumRaw);
+            const normFrom = whatsapp.formatPhone(fromNumRaw);
+
+            // Check exact match after normalization
+            const matchExact = normClient === normFrom;
+
+            // Check cross-inclusion (e.g. 80123 vs 23480123) just to be safe if formatPhone fails on one
+            const clientSimple = clientNumRaw.replace(/\D/g, '').replace(/^0/, ''); // 80...
+            const fromSimple = fromNumRaw.replace(/\D/g, '').replace(/^0/, '');    // 80...
+            const matchSimple = clientSimple === fromSimple || (clientSimple.length > 5 && fromSimple.includes(clientSimple)) || (fromSimple.length > 5 && clientSimple.includes(fromSimple));
+
+            if (matchExact || matchSimple) {
+                console.log(`[Webhook] Ignored Self-Message / Echo from ${from} (Matched Client Number: ${clientNumRaw})`);
                 return NextResponse.json({ status: 'ignored_self' });
             }
         }
