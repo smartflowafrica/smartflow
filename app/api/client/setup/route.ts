@@ -84,8 +84,8 @@ export async function POST(request: Request) {
 
         return NextResponse.json({ success: true });
 
-    } catch (error) {
+    } catch (error: any) {
         console.error('Onboarding Setup Error:', error);
-        return NextResponse.json({ error: 'Setup failed' }, { status: 500 });
+        return NextResponse.json({ error: error.message || 'Setup failed' }, { status: 500 });
     }
 }

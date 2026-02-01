@@ -77,13 +77,16 @@ export default function ClientOnboardingWizard({ clientId, onComplete }: ClientO
                 body: JSON.stringify(payload)
             });
 
-            if (!res.ok) throw new Error('Setup failed');
+            if (!res.ok) {
+                const errorData = await res.json();
+                throw new Error(errorData.error || 'Setup failed');
+            }
 
             toast.success('Setup complete! Welcome to SmartFlow.');
             onComplete();
-        } catch (error) {
+        } catch (error: any) {
             console.error(error);
-            toast.error('Failed to complete setup. Please try again.');
+            toast.error(`Setup Failed: ${error.message}`);
         } finally {
             setIsSubmitting(false);
         }
