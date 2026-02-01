@@ -172,13 +172,29 @@ export class WhatsAppService {
      * Gets instance connection state
      */
     public async getInstanceStatus(): Promise<any> {
-        const response = await fetch(`${this.apiUrl}/instance/connectionState/${this.instanceName}`, {
-            method: 'GET',
-            headers: { 'apikey': this.apiKey }
-        });
-        if (!response.ok) return null;
-        return await response.json();
+        try {
+            const response = await fetch(`${this.apiUrl}/instance/connectionState/${this.instanceName}`, {
+                method: 'GET',
+                headers: { 'apikey': this.apiKey }
+            });
+
+            if (!response.ok) {
+                // If 404, it means instance doesn't exist yet
+                if (response.status === 404) {
+                    return { instance: { state: 'not_found' } };
+                }
+                // If 5xx, might be service error
+                return { instance: { state: 'error', error: `API Error: ${response.status}` } };
+            }
+
+            return await response.json();
+        } catch (error: any) {
+            console.error('[WhatsAppService] getInstanceStatus Error:', error.message);
+            // Return a special state indicating unreachable
+            return { instance: { state: 'unreachable', error: error.message } };
+        }
     }
+
 
     public async deleteInstance(): Promise<boolean> {
         const response = await fetch(`${this.apiUrl}/instance/delete/${this.instanceName}`, {
@@ -232,10 +248,26 @@ export class WhatsAppService {
      * Sends a WhatsApp message via Evolution API with Safety Layers
      */
     public async sendMessage(to: string, message: string, clientId?: string): Promise<any> {
-        const formattedTo = this.formatPhone(to);
+        let formattedTo = this.formatPhone(to);
 
         // 1. SAFETY: Rate Limiting Check
         await this.checkRateLimit(formattedTo);
+
+        // 2. SAFETY: Resolve LID if needed
+        if (formattedTo.includes('@lid')) {
+            console.log(`[sendMessage] Detected LID ${formattedTo}. Resolving to real JID...`);
+            const realJid = await this.resolveLidToNumber(formattedTo);
+            if (realJid) {
+                console.log(`[sendMessage] Resolved LID to ${realJid}`);
+                // Use the resolved JID (strip @s.whatsapp.net for standard number field if needed, but Evolution usually takes full JID or number)
+                // Evolution v1.8 usually prefers just number for 'number' field, but JID is safer if it contains domain.
+                // However, formatPhone() creates valid input for 'number'. 
+                // Let's use the USER part of the JID if it's standard whatsapp.net
+                formattedTo = realJid.split('@')[0];
+            } else {
+                console.warn(`[sendMessage] Failed to resolve LID ${formattedTo}. Attempting send anyway...`);
+            }
+        }
 
         // Inner function to attempt sending
         const attemptSend = async (signal?: AbortSignal) => {
@@ -575,6 +607,12 @@ export class WhatsAppService {
         const formattedTo = this.formatPhone(to);
         await this.checkRateLimit(formattedTo);
 
+        let finalTo = formattedTo;
+        if (finalTo.includes('@lid')) {
+            const realJid = await this.resolveLidToNumber(finalTo);
+            if (realJid) finalTo = realJid.split('@')[0];
+        }
+
         try {
             const response = await fetch(`${this.apiUrl}/message/sendMedia/${this.instanceName}`, {
                 method: 'POST',
@@ -583,7 +621,7 @@ export class WhatsAppService {
                     'apikey': this.apiKey
                 },
                 body: JSON.stringify({
-                    number: formattedTo,
+                    number: finalTo,
                     mediaMessage: {
                         mediatype: mediaType, // Dynamic type
                         media: mediaUrl,

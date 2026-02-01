@@ -23,13 +23,18 @@ export default function WhatsAppConnect({ initialStatus = 'disconnected' }: What
                 const res = await fetch('/api/whatsapp/instance/status');
                 const data = await res.json();
                 console.log('[WhatsAppConnect] Status Check:', data);
+
                 if (data.state === 'open') {
                     setStatus('connected');
                     setQrCode(null);
                     setPolling(false);
+                } else if (data.state === 'unreachable' || data.state === 'error') {
+                    setStatus('offline');
+                    if (data.error) toast.error(`WhatsApp Service Error: ${data.error}`);
                 }
             } catch (error) {
                 console.error('Failed to check status', error);
+                setStatus('offline');
             }
         };
 
@@ -51,6 +56,11 @@ export default function WhatsAppConnect({ initialStatus = 'disconnected' }: What
                         setPolling(false);
                         setQrCode(null);
                         toast.success('WhatsApp Connected Successfully!');
+                    } else if (data.state === 'unreachable') {
+                        // Stop polling if service is down to avoid spam
+                        setPolling(false);
+                        setStatus('offline');
+                        toast.error('WhatsApp Service Unreachable');
                     }
                 } catch (e) {
                     console.error('Poll Error', e);
@@ -60,6 +70,7 @@ export default function WhatsAppConnect({ initialStatus = 'disconnected' }: What
 
         return () => clearInterval(interval);
     }, [polling, status]);
+
 
     const handleConnect = async () => {
         setLoading(true);
@@ -138,6 +149,28 @@ export default function WhatsAppConnect({ initialStatus = 'disconnected' }: What
             </div>
         );
     }
+
+    if (status === 'offline') {
+        return (
+            <div className="border border-red-200 bg-red-50 rounded-lg p-6 flex flex-col items-center justify-center text-center">
+                <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
+                    <LogOut className="w-8 h-8 text-red-600" />
+                </div>
+                <h3 className="text-lg font-semibold text-red-900">System Offline</h3>
+                <p className="text-sm text-red-700 mb-4 max-w-xs">
+                    The WhatsApp connection service is currently unreachable. Please contact support.
+                </p>
+                <button
+                    onClick={() => window.location.reload()}
+                    className="flex items-center gap-2 px-4 py-2 bg-white text-red-600 border border-red-200 rounded-md hover:bg-red-50 text-sm font-medium transition-colors"
+                >
+                    <RefreshCw className="w-4 h-4" />
+                    Retry Connection
+                </button>
+            </div>
+        );
+    }
+
 
     return (
         <div className="border border-slate-200 bg-white rounded-lg p-6">

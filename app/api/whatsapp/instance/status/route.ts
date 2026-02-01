@@ -27,9 +27,10 @@ export async function GET(request: Request) {
 
         // Format: v1.8.2 returns { instance: { state: "open" } }
         const actualState = statusData?.instance?.state || statusData?.state || 'unknown';
+        const errorDetail = statusData?.instance?.error || statusData?.error;
 
         // Sync with DB if needed
-        if (actualState) {
+        if (actualState && actualState !== 'unreachable' && actualState !== 'error') {
             const normalizedStatus = actualState === 'open' ? 'connected' : 'disconnected';
 
             await prisma.integration.update({
@@ -40,8 +41,10 @@ export async function GET(request: Request) {
 
         return NextResponse.json({
             success: true,
-            state: actualState
+            state: actualState,
+            error: errorDetail
         });
+
 
     } catch (error: any) {
         return NextResponse.json({ error: error.message }, { status: 500 });
