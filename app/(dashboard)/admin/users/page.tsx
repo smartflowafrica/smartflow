@@ -2,6 +2,7 @@
 import prisma from '@/lib/prisma';
 import { Mail, Shield, Building2, Calendar, User as UserIcon } from 'lucide-react';
 import Link from 'next/link';
+import { User } from '@prisma/client';
 
 export const dynamic = 'force-dynamic';
 
@@ -57,7 +58,7 @@ export default async function UsersPage() {
                                     </td>
                                 </tr>
                             ) : (
-                                users.map((user) => (
+                                users.map((user: any) => (
                                     <tr key={user.id} className="hover:bg-slate-50 transition">
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-3">
