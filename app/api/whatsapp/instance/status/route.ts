@@ -17,25 +17,52 @@ export async function GET(request: Request) {
             return NextResponse.json({ error: 'Client not found' }, { status: 404 });
         }
 
-        const instanceName = `client_${user.clientId}`;
-        const whatsapp = new WhatsAppService(instanceName);
+        // STRATEGY: Check Standard Name -> Check Legacy Name -> Return Status
+        // 1. Check Standard Name: client_{clientId}
+        const standardName = `client_${user.clientId}`;
+        let usedInstanceName = standardName;
+        let whatsapp = new WhatsAppService(standardName);
+        let statusData = await whatsapp.getInstanceStatus();
+        let actualState = statusData?.instance?.state || statusData?.state || 'unknown';
 
-        // Fetch Real-time Status
-        // Fetch Real-time Status
-        const statusData = await whatsapp.getInstanceStatus();
-        console.log('[API] Raw Status Data:', JSON.stringify(statusData));
+        // 2. If Not Found, Check Legacy Name: {clientId} (No prefix)
+        // This handles existing users who connected before we standardized the naming
+        if (actualState === 'not_found' || actualState === 'unknown') {
+            const legacyName = user.clientId!;
+            console.log(`[API] Standard instance ${standardName} not found. Checking legacy: ${legacyName}`);
 
-        // Format: v1.8.2 returns { instance: { state: "open" } }
-        const actualState = statusData?.instance?.state || statusData?.state || 'unknown';
+            const legacyWhatsapp = new WhatsAppService(legacyName);
+            const legacyStatus = await legacyWhatsapp.getInstanceStatus();
+            const legacyState = legacyStatus?.instance?.state || legacyStatus?.state;
+
+            if (legacyState && legacyState !== 'not_found' && legacyState !== 'unknown') {
+                console.log(`[API] Found Legacy Instance: ${legacyName} (State: ${legacyState})`);
+                // Switch to using this one
+                whatsapp = legacyWhatsapp;
+                statusData = legacyStatus;
+                actualState = legacyState;
+                usedInstanceName = legacyName;
+
+                // Auto-Heal: Update DB to point to this valid instance
+                await prisma.integration.upsert({
+                    where: { clientId: user.clientId },
+                    update: { whatsappInstanceId: legacyName },
+                    create: { clientId: user.clientId!, whatsappInstanceId: legacyName }
+                });
+            }
+        }
+
+        console.log('[API] Final Status Data:', JSON.stringify(statusData));
         const errorDetail = statusData?.instance?.error || statusData?.error;
 
-        // Sync with DB if needed
+        // Sync Status with DB
         if (actualState && actualState !== 'unreachable' && actualState !== 'error') {
             const normalizedStatus = actualState === 'open' ? 'connected' : 'disconnected';
 
-            await prisma.integration.update({
+            await prisma.integration.upsert({
                 where: { clientId: user.clientId },
-                data: { whatsappStatus: normalizedStatus }
+                update: { whatsappStatus: normalizedStatus, whatsappInstanceId: usedInstanceName },
+                create: { clientId: user.clientId!, whatsappStatus: normalizedStatus, whatsappInstanceId: usedInstanceName }
             });
         }
 
@@ -43,8 +70,9 @@ export async function GET(request: Request) {
             success: true,
             state: actualState,
             error: errorDetail,
-            instanceName: instanceName
+            instanceName: usedInstanceName
         });
+
 
 
 
