@@ -24,7 +24,10 @@ export async function POST(
             include: {
                 customer: true,
                 client: {
-                    select: { businessName: true }
+                    select: {
+                        businessName: true,
+                        integrations: true
+                    }
                 }
             }
         });
@@ -51,7 +54,9 @@ export async function POST(
         }
 
         // Send via WhatsApp
-        const whatsapp = new WhatsAppService();
+        // Use Client's specific instance ID if available
+        const instanceId = job.client?.integrations?.whatsappInstanceId;
+        const whatsapp = new WhatsAppService(instanceId || undefined);
         await whatsapp.sendMessage(job.customerPhone, message, job.clientId);
 
         return NextResponse.json({

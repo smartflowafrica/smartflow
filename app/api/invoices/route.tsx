@@ -18,7 +18,12 @@ export async function POST(request: Request) {
         const job = await prisma.job.findUnique({
             where: { id: jobId },
             include: {
-                client: { include: { branding: true } },
+                client: {
+                    include: {
+                        branding: true,
+                        integrations: true
+                    }
+                },
                 customer: true
             }
         });
@@ -142,7 +147,8 @@ Thank you for your business!
         let whatsappSent = false;
         try {
             const { WhatsAppService } = await import('@/lib/api/evolution-whatsapp');
-            const whatsapp = new WhatsAppService();
+            const instanceId = job.client.integrations?.whatsappInstanceId;
+            const whatsapp = new WhatsAppService(instanceId || undefined);
 
             // Send via Base64 (No network request needed for file)
             await whatsapp.sendMedia(
@@ -169,7 +175,8 @@ Thank you for your business!
             // Fallback: Send text only
             try {
                 const { WhatsAppService } = await import('@/lib/api/evolution-whatsapp');
-                const whatsapp = new WhatsAppService();
+                // Re-instantiate with same instance ID
+                const whatsapp = new WhatsAppService(job.client.integrations?.whatsappInstanceId || undefined);
                 await whatsapp.sendMessage(job.customerPhone, invoiceMessage, job.clientId);
                 whatsappSent = true; // Still counts as sent
             } catch (e) {

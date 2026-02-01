@@ -11,7 +11,9 @@ export default async function PaymentPage({ params }: { params: { id: string } }
                     businessName: true,
                     email: true,
                     phone: true,
-                    address: true
+                    address: true,
+                    branding: true,
+                    integrations: true // also fetch integration to check paystack key existence
                 }
             },
             customer: {
@@ -53,6 +55,9 @@ export default async function PaymentPage({ params }: { params: { id: string } }
                     description={job.description}
                     customerName={job.customerName}
                     customerEmail={job.customer?.email || undefined}
+                    // @ts-ignore
+                    bankDetails={job.client.branding?.bankDetails}
+                    hasPaystack={!!job.client.integrations?.paystackSecretKey}
                 />
 
                 {/* Footer */}
