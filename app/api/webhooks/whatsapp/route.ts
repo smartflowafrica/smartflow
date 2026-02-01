@@ -12,6 +12,17 @@ export async function POST(req: Request) {
         // 1. Get JSON Payload (Evolution sends JSON)
         const body = await req.json();
 
+        // 1b. LOG TO FILE FOR DEBUGGING (Temporary)
+        try {
+            const fs = require('fs');
+            const path = require('path');
+            const logPath = path.join(process.cwd(), 'webhook_payloads.log');
+            fs.appendFileSync(logPath, `\n\n[${new Date().toISOString()}] RECEIVED:\n${JSON.stringify(body, null, 2)}\n`);
+        } catch (e) {
+            console.error('Failed to write log file', e);
+        }
+
+
         // DEBUG LOGGING
         console.log('[DEBUG WEBHOOK] FULL BODY:', JSON.stringify(body));
 
