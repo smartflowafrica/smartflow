@@ -1,5 +1,6 @@
 import prisma from '@/lib/prisma';
 import { Activity, CheckCircle2, AlertCircle, UserPlus, FileText, Settings, XCircle } from 'lucide-react';
+import { SystemLog } from '@prisma/client';
 
 export const dynamic = 'force-dynamic';
 
@@ -48,7 +49,7 @@ export default async function ActivityPage() {
                     </div>
                 ) : (
                     <div className="divide-y divide-slate-100">
-                        {activities.map((activity) => (
+                        {activities.map((activity: SystemLog) => (
                             <div key={activity.id} className="p-6 hover:bg-slate-50 transition-colors">
                                 <div className="flex items-start gap-4">
                                     <div className={`p-2 rounded-lg bg-slate-100 flex-shrink-0`}>
@@ -70,8 +71,8 @@ export default async function ActivityPage() {
                                             <span className="text-xs text-slate-500">
                                                 Level:
                                                 <span className={`ml-1 font-medium ${activity.level === 'INFO' ? 'text-blue-600' :
-                                                        activity.level === 'WARNING' ? 'text-amber-600' :
-                                                            'text-red-600'
+                                                    activity.level === 'WARNING' ? 'text-amber-600' :
+                                                        'text-red-600'
                                                     }`}>
                                                     {activity.level}
                                                 </span>
