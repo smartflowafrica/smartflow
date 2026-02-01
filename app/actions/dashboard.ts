@@ -38,7 +38,7 @@ export async function getDashboardStats(clientId: string) {
             _count: { status: true }
         });
 
-        const statusCounts = jobsByStatus.reduce((acc: Record<string, number>, curr) => {
+        const statusCounts = jobsByStatus.reduce((acc: Record<string, number>, curr: any) => {
             acc[curr.status] = curr._count.status;
             return acc;
         }, {} as Record<string, number>);
