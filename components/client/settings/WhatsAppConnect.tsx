@@ -19,10 +19,14 @@ export default function WhatsAppConnect({ initialStatus = 'disconnected' }: What
     useEffect(() => {
         const checkStatus = async () => {
             try {
+                // If we are polling, we don't want to override 'created' unless it's 'open'
                 const res = await fetch('/api/whatsapp/instance/status');
                 const data = await res.json();
+                console.log('[WhatsAppConnect] Status Check:', data);
                 if (data.state === 'open') {
                     setStatus('connected');
+                    setQrCode(null);
+                    setPolling(false);
                 }
             } catch (error) {
                 console.error('Failed to check status', error);
@@ -145,11 +149,23 @@ export default function WhatsAppConnect({ initialStatus = 'disconnected' }: What
                         This allows SmartFlow to send invoices, reminders, and reply to customers automatically.
                     </p>
 
-                    <div className="flex items-center gap-2 mb-6">
-                        <div className="px-3 py-1 bg-slate-100 border border-slate-200 rounded-full flex items-center gap-2 w-fit">
-                            <div className="w-2 h-2 rounded-full bg-slate-400" />
-                            <span className="text-xs font-medium text-slate-600 uppercase tracking-wide">Not Connected</span>
+                    <div className="flex items-center gap-4 mb-6">
+                        <div className={`px-3 py-1 border rounded-full flex items-center gap-2 w-fit transition-colors ${status === 'connecting' ? 'bg-yellow-50 border-yellow-200 text-yellow-700' :
+                            'bg-slate-100 border-slate-200 text-slate-600'
+                            }`}>
+                            <div className={`w-2 h-2 rounded-full ${status === 'connecting' ? 'bg-yellow-500 animate-pulse' : 'bg-slate-400'
+                                }`} />
+                            <span className="text-xs font-medium uppercase tracking-wide">
+                                {status === 'connecting' ? 'Connecting...' : 'Not Connected'}
+                            </span>
                         </div>
+
+                        <button
+                            onClick={() => window.location.reload()}
+                            className="text-xs text-blue-600 hover:text-blue-800 underline decoration-dotted"
+                        >
+                            Check Status
+                        </button>
                     </div>
 
                     {!qrCode && (
