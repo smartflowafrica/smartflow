@@ -76,10 +76,10 @@ export async function createJob(rawParams: CreateJobParams) {
             });
         }
 
-        // Get client business name for the notification
+        // Get client details with integration settings
         const client = await prisma.client.findUnique({
             where: { id: params.clientId },
-            select: { businessName: true }
+            include: { integrations: true }
         });
 
         const job = await prisma.job.create({
@@ -112,7 +112,12 @@ export async function createJob(rawParams: CreateJobParams) {
         // Send WhatsApp notification for car check-in
         try {
             const { WhatsAppService } = await import('@/lib/api/evolution-whatsapp');
-            const whatsapp = new WhatsAppService();
+            // Use Client's specific instance ID if available
+            const whatsapp = new WhatsAppService(client?.integrations?.whatsappInstanceId || undefined);
+
+            console.log(`[Job Check-in] Attempting to send WhatsApp via instance: ${client?.integrations?.whatsappInstanceId || 'DEFAULT'}`);
+
+
             const checkInMessage = `Hello ${params.customerName}! 👋
 
 Your car has been checked in at ${client?.businessName || 'our shop'}.
@@ -191,7 +196,9 @@ export async function updateJobStatus(jobId: string, status: string) {
             where: { id: jobId },
             data: updateData,
             include: {
-                client: { select: { businessName: true } }
+                client: {
+                    include: { integrations: true }
+                }
             }
         });
 
@@ -203,7 +210,10 @@ export async function updateJobStatus(jobId: string, status: string) {
                 const pdfData = await generateInvoicePDF(job.id, 'invoice');
 
                 const { WhatsAppService } = await import('@/lib/api/evolution-whatsapp');
-                const whatsapp = new WhatsAppService();
+                // Use Client's specific instance ID
+                const whatsapp = new WhatsAppService(job.client?.integrations?.whatsappInstanceId || undefined);
+
+                console.log(`[Job Ready] Attempting to send WhatsApp via instance: ${job.client?.integrations?.whatsappInstanceId || 'DEFAULT'}`);
 
                 const readyMessage = `Great news, ${job.customerName}! 🎉
 
@@ -279,7 +289,11 @@ export async function recordJobPayment(jobId: string, amount: number, method: st
 
         const job = await prisma.job.findUnique({
             where: { id: jobId },
-            include: { client: { select: { businessName: true } } }
+            include: {
+                client: {
+                    include: { integrations: true }
+                }
+            }
         });
 
         if (!job || ((user as any).clientId && job.clientId !== (user as any).clientId)) {
@@ -329,7 +343,10 @@ export async function recordJobPayment(jobId: string, amount: number, method: st
             const pdfData = await generateInvoicePDF(job.id, 'receipt', readableMethod);
 
             const { WhatsAppService } = await import('@/lib/api/evolution-whatsapp');
-            const whatsapp = new WhatsAppService();
+            // Use Client's specific instance ID
+            const whatsapp = new WhatsAppService(job.client?.integrations?.whatsappInstanceId || undefined);
+
+            console.log(`[Job Receipt] Attempting to send WhatsApp via instance: ${job.client?.integrations?.whatsappInstanceId || 'DEFAULT'}`);
 
             const receiptMessage = `Payment Received! ✅
 
