@@ -108,6 +108,18 @@ export async function POST(req: Request) {
             return NextResponse.json({ status: 'unclaimed' });
         }
 
+        // 3.5. CRITICAL FIX: Ignore Self-Messages / Echoes
+        // If 'from' (Customer Phone) matches the Client's WhatsApp Number, it's a self-message or sync echo.
+        // We must NOT treat the business as a customer.
+        if (client.integrations?.whatsappNumber) {
+            const clientNum = client.integrations.whatsappNumber.replace(/\D/g, '');
+            const fromNum = from.replace(/\D/g, ''); // 'from' is already +normalized but safe to strip
+            if (clientNum && fromNum.includes(clientNum)) {
+                console.log(`[Webhook] Ignored Self-Message / Echo from ${from} (Matched Client Number)`);
+                return NextResponse.json({ status: 'ignored_self' });
+            }
+        }
+
         // Initialize Service for REPLYING using the correct instance
         // Use the instanceId from webhook if available, else from DB, else default
         const replyInstanceName = instanceId || client.integrations?.whatsappInstanceId;
