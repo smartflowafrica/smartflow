@@ -217,7 +217,8 @@ export async function POST(req: Request) {
                     status: (conversation.status === 'RESOLVED' || isWakeWord) ? 'ACTIVE' : conversation.status,
                     unreadCount: { increment: 1 },
                     lastMessageAt: new Date(),
-                    customerName: name || conversation.customerName
+                    // Update name if new one is valid and not generic
+                    customerName: (name && name !== 'New WhatsApp Lead') ? name : conversation.customerName
                 }
             });
         }
