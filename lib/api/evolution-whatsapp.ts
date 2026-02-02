@@ -606,6 +606,26 @@ export class WhatsAppService {
                 console.warn(`[resolveLidToNumber] Chat Find Failed: ${response.status} ${await response.text()}`);
             }
 
+            // TRY: POST /chat/onWhatsApp (Standard Existence Check)
+            console.log(`[resolveLidToNumber] Querying (POST): /chat/onWhatsApp/${this.instanceName}`);
+            const responseCheck = await fetch(`${this.apiUrl}/chat/onWhatsApp/${this.instanceName}`, {
+                method: 'POST',
+                headers: { 'apikey': this.apiKey, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ numbers: [lidJid] })
+            });
+
+            if (responseCheck.ok) {
+                const dataCheck = await responseCheck.json();
+                console.log(`[resolveLidToNumber] OnWhatsApp Result:`, JSON.stringify(dataCheck));
+                // Expecting array: [{ exists: true, jid: "...", number: "..." }]
+                if (Array.isArray(dataCheck) && dataCheck.length > 0 && dataCheck[0].exists) {
+                    const found = dataCheck[0];
+                    if (found.jid && found.jid.includes('@s.whatsapp.net')) return found.jid;
+                }
+            } else {
+                console.warn(`[resolveLidToNumber] OnWhatsApp Failed: ${responseCheck.status} ${await responseCheck.text()}`);
+            }
+
             // Try /contact/find if chat/find failed?
             console.log(`[resolveLidToNumber] Querying: /contact/find/${this.instanceName}/${lidJid}`);
             const responseContact = await fetch(`${this.apiUrl}/contact/find/${this.instanceName}/${lidJid}`, {
