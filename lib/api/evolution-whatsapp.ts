@@ -162,6 +162,12 @@ export class WhatsAppService {
             }
 
             const data = await response.json();
+
+            // Normalization for Evolution v2 (qrcode is nested)
+            if (data.qrcode && data.qrcode.base64) {
+                return { ...data, base64: data.qrcode.base64 };
+            }
+
             return data;
         } catch (e: any) {
             console.error('[WhatsAppService] Connect Network Error:', e);
