@@ -285,7 +285,8 @@ export class WhatsAppService {
                         delay: 1200,
                         presence: 'composing',
                         // Force checking to false might bypass "exists" check if API supports it
-                        linkPreview: false
+                        linkPreview: false,
+                        forceSend: true // BYPASS EXISTENCE CHECK
                     }
                 })
             });
