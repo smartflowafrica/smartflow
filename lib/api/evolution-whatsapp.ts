@@ -127,10 +127,12 @@ export class WhatsAppService {
                 'apikey': this.apiKey
             },
             body: JSON.stringify({
-                enabled: true,
-                url: 'https://smartflowafrica.com/api/webhooks/whatsapp',
-                webhookByEvents: false,
-                events: ['MESSAGES_UPSERT', 'MESSAGES_UPDATE', 'SEND_MESSAGE']
+                webhook: {
+                    enabled: true,
+                    url: 'https://smartflowafrica.com/api/webhooks/whatsapp',
+                    webhookByEvents: false,
+                    events: ['MESSAGES_UPSERT', 'MESSAGES_UPDATE', 'SEND_MESSAGE']
+                }
             })
         });
 
