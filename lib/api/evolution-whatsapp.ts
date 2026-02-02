@@ -271,16 +271,8 @@ export class WhatsAppService {
 
         // Inner function to attempt sending
         const attemptSend = async (signal?: AbortSignal) => {
-            // WORKAROUND: Some Evolution versions fail if @lid is present in 'number' field
-            // We strip it down to digits if we are forcing send.
-            let numberToSend = formattedTo;
-            if (numberToSend.includes('@lid')) {
-                // Try removing the suffix essentially sending "250..." 
-                numberToSend = numberToSend.replace('@lid', '');
-            }
-
             const bodyPayload = {
-                number: numberToSend,
+                number: formattedTo,
                 textMessage: { text: message },
                 options: {
                     delay: 1200,
@@ -289,7 +281,7 @@ export class WhatsAppService {
                     forceSend: true
                 }
             };
-            console.log(`[sendMessage] Sending Payload (Stripped Suffix):`, JSON.stringify(bodyPayload));
+            console.log(`[sendMessage] Sending Payload:`, JSON.stringify(bodyPayload));
 
             const response = await fetch(`${this.apiUrl}/message/sendText/${this.instanceName}`, {
                 method: 'POST',
