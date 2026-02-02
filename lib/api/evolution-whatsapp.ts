@@ -461,12 +461,12 @@ export class WhatsAppService {
             if (rawFrom.includes('@lid')) {
                 // LID Detected.
                 // UNRELIABLE: body.sender often points to the Instance Owner (Bot), not the Guest. 
-                // We must rely on 'participant' or API lookup.
-
-                const participantJid = msgData.participant || msgData.key.participant || body.sender;
+                // We must reply on 'participant' or API lookup.
+                // FIX: Do NOT fall back to body.sender, as that is the Instance Owner!
+                const participantJid = msgData.participant || msgData.key.participant;
 
                 if (participantJid && participantJid.includes('@s.whatsapp.net')) {
-                    console.log(`[Webhook] LID Detected (${rawFrom}). Found real JID in sender/participant: ${participantJid}`);
+                    console.log(`[Webhook] LID Detected (${rawFrom}). Found real JID in participant: ${participantJid}`);
                     cleanFrom = participantJid.split('@')[0];
                     formattedFrom = '+' + cleanFrom;
                 } else {
