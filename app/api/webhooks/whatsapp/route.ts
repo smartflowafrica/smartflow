@@ -24,7 +24,8 @@ export async function POST(req: Request) {
 
 
         // DEBUG LOGGING
-        console.log('[DEBUG WEBHOOK] FULL BODY:', JSON.stringify(body));
+        console.log(`[DEBUG WEBHOOK] RECEIVED: Event=${body.event || body.type} Instance=${body.instance}`);
+        console.log(`[DEBUG WEBHOOK] PAYLOAD_DATA:`, JSON.stringify(body.data, null, 2));
 
         // 2. Parse via Service
         const parsed = await whatsapp.handleIncomingWebhook(body);
