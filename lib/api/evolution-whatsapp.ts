@@ -281,7 +281,12 @@ export class WhatsAppService {
                 body: JSON.stringify({
                     number: formattedTo,
                     textMessage: { text: message },
-                    options: { delay: 1200 }
+                    options: {
+                        delay: 1200,
+                        presence: 'composing',
+                        // Force checking to false might bypass "exists" check if API supports it
+                        linkPreview: false
+                    }
                 })
             });
 
@@ -590,14 +595,14 @@ export class WhatsAppService {
                 headers: { 'apikey': this.apiKey }
             });
 
-            if (!response.ok) {
-                console.warn(`[resolveLidToNumber] Chat Find Failed: ${response.status} ${await response.text()}`);
-            } else {
+            if (response.ok) {
                 const data = await response.json();
                 console.log(`[resolveLidToNumber] Chat Find Result:`, JSON.stringify(data));
                 if (data?.id && data.id.includes('@s.whatsapp.net')) {
                     return data.id;
                 }
+            } else {
+                console.warn(`[resolveLidToNumber] Chat Find Failed: ${response.status} ${await response.text()}`);
             }
 
             // Try /contact/find if chat/find failed?
@@ -616,6 +621,15 @@ export class WhatsAppService {
             } else {
                 console.warn(`[resolveLidToNumber] Contact Find Failed: ${responseContact.status} ${await responseContact.text()}`);
             }
+
+            // FALLBACK: If we can't resolve, just return NULL. 
+            // The caller will then decide whether to use the LID.
+            // But wait! If we return null, the caller uses the LID.
+            // The caller does: if (realJid) ... else ... attempt send anyway.
+            // The ERROR log earlier showed: Evolution API Error (400): ... "jid":"250...@lid" ...
+            // This suggests Evolution failed to send to the LID.
+            // Maybe we need to ensure the LID is passed Cleanly?
+            // The formatPhone function removes +, which is good.
 
             return null;
         } catch (e) {
