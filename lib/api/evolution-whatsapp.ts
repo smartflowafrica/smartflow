@@ -72,7 +72,8 @@ export class WhatsAppService {
             },
             body: JSON.stringify({
                 instanceName: instanceName,
-                qrcode: true
+                qrcode: true,
+                integration: 'WHATSAPP-BAILEYS' // REQUIRED for Evolution v2
             })
         });
 
