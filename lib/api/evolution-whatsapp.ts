@@ -271,6 +271,18 @@ export class WhatsAppService {
 
         // Inner function to attempt sending
         const attemptSend = async (signal?: AbortSignal) => {
+            const bodyPayload = {
+                number: formattedTo,
+                textMessage: { text: message },
+                options: {
+                    delay: 1200,
+                    presence: 'composing',
+                    linkPreview: false,
+                    forceSend: true // Check if this is ignored by API?
+                }
+            };
+            console.log(`[sendMessage] Sending Payload:`, JSON.stringify(bodyPayload));
+
             const response = await fetch(`${this.apiUrl}/message/sendText/${this.instanceName}`, {
                 method: 'POST',
                 headers: {
@@ -278,17 +290,7 @@ export class WhatsAppService {
                     'apikey': this.apiKey
                 },
                 signal,
-                body: JSON.stringify({
-                    number: formattedTo,
-                    textMessage: { text: message },
-                    options: {
-                        delay: 1200,
-                        presence: 'composing',
-                        // Force checking to false might bypass "exists" check if API supports it
-                        linkPreview: false,
-                        forceSend: true // BYPASS EXISTENCE CHECK
-                    }
-                })
+                body: JSON.stringify(bodyPayload)
             });
 
             if (!response.ok) {
