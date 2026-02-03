@@ -73,7 +73,13 @@ export class WhatsAppService {
             body: JSON.stringify({
                 instanceName: instanceName,
                 qrcode: true,
-                integration: 'WHATSAPP-BAILEYS' // REQUIRED for Evolution v2
+                integration: 'WHATSAPP-BAILEYS',
+                webhook: {
+                    enabled: true,
+                    url: 'https://smartflowafrica.com/api/webhooks/whatsapp',
+                    webhookByEvents: false,
+                    events: ['MESSAGES_UPSERT', 'MESSAGES_UPDATE', 'SEND_MESSAGE']
+                }
             })
         });
 
@@ -104,15 +110,6 @@ export class WhatsAppService {
         }
 
         const data = await response.json();
-
-        // Configure Webhook separately
-        try {
-            console.log(`[WhatsAppService] Setting webhook for ${instanceName}...`);
-            await this.setWebhook(instanceName);
-        } catch (webhookError) {
-            console.error('[WhatsAppService] Warning: Failed to set webhook:', webhookError);
-        }
-
         return data;
     }
 
