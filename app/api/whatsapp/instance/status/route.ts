@@ -19,7 +19,7 @@ export async function GET(request: Request) {
 
         // STRATEGY: Check Standard Name -> Check Legacy Name -> Return Status
         // 1. Check Standard Name: client_{clientId}
-        const standardName = `client_${user.clientId}`;
+        const standardName = `client_${user.clientId}_v2`;
         let usedInstanceName = standardName;
         let whatsapp = new WhatsAppService(standardName);
         let statusData = await whatsapp.getInstanceStatus();

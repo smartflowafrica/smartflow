@@ -21,7 +21,7 @@ export async function POST(request: Request) {
         }
 
         const clientId = user.clientId!;
-        const instanceName = `client_${clientId}`; // Standardized name
+        const instanceName = `client_${clientId}_v2`; // Standardized name v2 for Evolution upgrade
 
 
         console.log(`[API] Creating WhatsApp Instance for Client ${clientId}: ${instanceName}`);

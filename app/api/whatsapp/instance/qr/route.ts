@@ -17,7 +17,7 @@ export async function GET(request: Request) {
             return NextResponse.json({ error: 'Client not found' }, { status: 404 });
         }
 
-        const instanceName = `client_${user.clientId}`;
+        const instanceName = `client_${user.clientId}_v2`;
 
         const whatsapp = new WhatsAppService(instanceName);
 
