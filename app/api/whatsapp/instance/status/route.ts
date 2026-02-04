@@ -65,8 +65,8 @@ export async function GET(request: Request) {
             const newCount = connectingCount + 1;
             console.log(`[API] Instance stuck in 'connecting' state. Poll count: ${newCount}`);
 
-            // After 5 consecutive polls (15 seconds at 3s intervals), trigger restart
-            if (newCount >= 5) {
+            // After 3 consecutive polls (9 seconds at 3s intervals), trigger restart
+            if (newCount >= 3) {
                 console.log('[API] Triggering auto-restart for stuck instance...');
                 await whatsapp.restartInstance();
 

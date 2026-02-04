@@ -213,15 +213,32 @@ export class WhatsAppService {
     /**
      * Restarts an instance to force reconnection after QR scan
      * This is needed in Evolution v2 as the status sometimes gets stuck on 'connecting'
+     * Uses /instance/connect which triggers a proper reconnection (same as Evolution Manager's Restart)
      */
     public async restartInstance(): Promise<boolean> {
         try {
-            const response = await fetch(`${this.apiUrl}/instance/restart/${this.instanceName}`, {
+            console.log(`[WhatsAppService] Triggering reconnection for ${this.instanceName}...`);
+
+            // Method 1: Call connect endpoint (this is what Evolution Manager does)
+            const connectResponse = await fetch(`${this.apiUrl}/instance/connect/${this.instanceName}`, {
+                method: 'GET',
+                headers: { 'apikey': this.apiKey }
+            });
+
+            if (connectResponse.ok) {
+                console.log(`[WhatsAppService] Connect triggered successfully`);
+                return true;
+            }
+
+            // Method 2: If connect fails, try restart endpoint
+            console.log(`[WhatsAppService] Connect returned ${connectResponse.status}, trying restart...`);
+            const restartResponse = await fetch(`${this.apiUrl}/instance/restart/${this.instanceName}`, {
                 method: 'PUT',
                 headers: { 'apikey': this.apiKey }
             });
-            console.log(`[WhatsAppService] Restart Instance Result: ${response.status}`);
-            return response.ok;
+
+            console.log(`[WhatsAppService] Restart Instance Result: ${restartResponse.status}`);
+            return restartResponse.ok;
         } catch (error: any) {
             console.error('[WhatsAppService] Restart Instance Error:', error.message);
             return false;
