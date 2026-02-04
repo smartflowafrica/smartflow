@@ -48,24 +48,33 @@ export default function WhatsAppConnect({ initialStatus = 'disconnected' }: What
     // Poll for status when scanning
     useEffect(() => {
         let interval: NodeJS.Timeout;
+        let connectingCount = 0; // Track consecutive 'connecting' polls
 
         if (polling || status === 'created') {
             interval = setInterval(async () => {
                 try {
-                    const res = await fetch('/api/whatsapp/instance/status');
+                    // Pass connectingCount to API for auto-restart detection
+                    const res = await fetch(`/api/whatsapp/instance/status?connectingCount=${connectingCount}`);
                     const data = await res.json();
-
-
 
                     if (data.state === 'open') {
                         setStatus('connected');
                         setPolling(false);
                         setQrCode(null);
+                        connectingCount = 0;
                         toast.success('WhatsApp Connected Successfully!');
+                    } else if (data.state === 'restarting') {
+                        // Auto-restart was triggered, show feedback
+                        toast.info('Finalizing connection...');
+                        connectingCount = 0;
+                    } else if (data.state === 'connecting') {
+                        // Track consecutive connecting polls
+                        connectingCount = data.connectingCount || (connectingCount + 1);
                     } else if (data.state === 'unreachable') {
                         // Stop polling if service is down to avoid spam
                         setPolling(false);
                         setStatus('offline');
+                        connectingCount = 0;
                         toast.error('WhatsApp Service Unreachable');
                     }
                 } catch (e) {

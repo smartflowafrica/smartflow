@@ -55,6 +55,40 @@ export async function GET(request: Request) {
         console.log('[API] Final Status Data:', JSON.stringify(statusData));
         const errorDetail = statusData?.instance?.error || statusData?.error;
 
+        // AUTO-RESTART LOGIC for Evolution v2:
+        // After QR scan, instance sometimes gets stuck in 'connecting' state.
+        // Track consecutive 'connecting' polls and auto-restart after threshold.
+        const url = new URL(request.url);
+        const connectingCount = parseInt(url.searchParams.get('connectingCount') || '0');
+
+        if (actualState === 'connecting') {
+            const newCount = connectingCount + 1;
+            console.log(`[API] Instance stuck in 'connecting' state. Poll count: ${newCount}`);
+
+            // After 5 consecutive polls (15 seconds at 3s intervals), trigger restart
+            if (newCount >= 5) {
+                console.log('[API] Triggering auto-restart for stuck instance...');
+                await whatsapp.restartInstance();
+
+                return NextResponse.json({
+                    success: true,
+                    state: 'restarting',
+                    message: 'Connection is being finalized...',
+                    connectingCount: 0, // Reset counter
+                    instanceName: usedInstanceName
+                });
+            }
+
+            // Return with incremented counter for frontend to track
+            return NextResponse.json({
+                success: true,
+                state: actualState,
+                error: errorDetail,
+                connectingCount: newCount,
+                instanceName: usedInstanceName
+            });
+        }
+
         // Sync Status with DB
         if (actualState && actualState !== 'unreachable' && actualState !== 'error') {
             const normalizedStatus = actualState === 'open' ? 'connected' : 'disconnected';
@@ -70,6 +104,7 @@ export async function GET(request: Request) {
             success: true,
             state: actualState,
             error: errorDetail,
+            connectingCount: 0,
             instanceName: usedInstanceName
         });
 
