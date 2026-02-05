@@ -1,20 +1,47 @@
-// This script sets the webhook to use the internal Docker host IP
-// Use this if Evolution API cannot reach https://smartflowafrica.com from inside Docker
-
-const INSTANCE_NAME = 'client_cmjljfn5a00028oay4dfj4o4e_v2';
 const API_URL = 'http://localhost:8081';
 const API_KEY = '44289315-9C0C-4318-825B-60C7E9A34567';
-
-// Internal Docker host IP - this is the default gateway for containers on Linux
-// Port 3000 is where Next.js runs (adjust if different)
 const INTERNAL_WEBHOOK_URL = 'http://172.17.0.1:3000/api/webhooks/whatsapp';
+
+async function tryEndpoint(path) {
+    try {
+        const response = await fetch(`${API_URL}${path}`, {
+            method: 'GET',
+            headers: { 'apikey': API_KEY }
+        });
+        if (!response.ok) return null;
+        return await response.json();
+    } catch (e) {
+        return null;
+    }
+}
 
 async function setWebhook() {
     try {
-        console.log(`Setting INTERNAL webhook for instance: ${INSTANCE_NAME}...`);
-        console.log(`Webhook URL: ${INTERNAL_WEBHOOK_URL}`);
+        console.log('Finding active instance...');
 
-        const response = await fetch(`${API_URL}/webhook/set/${INSTANCE_NAME}`, {
+        // Try to find instances
+        let instances = await tryEndpoint('/instance/fetchInstances');
+        if (!instances) instances = await tryEndpoint('/instance/fetch');
+
+        if (!instances || !Array.isArray(instances) || instances.length === 0) {
+            console.error('❌ NO INSTANCES FOUND!');
+            console.error('👉 Please go to your App, disconnect/reconnect, and SCAN the QR code first.');
+            return;
+        }
+
+        // Get the first instance
+        const first = instances[0];
+        const instanceName = first.instance?.instanceName || first.name || first.instanceName;
+
+        if (!instanceName) {
+            console.error('❌ Could not parse instance name from response:', JSON.stringify(first));
+            return;
+        }
+
+        console.log(`✅ Found Instance: ${instanceName}`);
+        console.log(`Setting INTERNAL webhook to: ${INTERNAL_WEBHOOK_URL}...`);
+
+        const response = await fetch(`${API_URL}/webhook/set/${instanceName}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -33,8 +60,8 @@ async function setWebhook() {
         }
 
         const data = await response.json();
-        console.log('Webhook Set Successfully:', JSON.stringify(data, null, 2));
-        console.log('\nNow send a test message from your phone to verify!');
+        console.log('🎉 Webhook Set Successfully:', JSON.stringify(data, null, 2));
+        console.log('\n👉 Now send a test message from your phone. It should work instantly!');
 
     } catch (error) {
         console.error('Error setting webhook:', error.message);
