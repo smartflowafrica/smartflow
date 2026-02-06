@@ -1,6 +1,6 @@
 const API_URL = 'http://localhost:8081';
 const API_KEY = '44289315-9C0C-4318-825B-60C7E9A34567';
-const INTERNAL_WEBHOOK_URL = 'http://172.17.0.1:3000/api/webhooks/whatsapp';
+const INTERNAL_WEBHOOK_URL = 'http://172.17.0.1:3001/api/webhooks/whatsapp';
 
 async function tryEndpoint(path) {
     try {
