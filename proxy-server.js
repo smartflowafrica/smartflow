@@ -16,6 +16,7 @@ const server = http.createServer((clientReq, clientRes) => {
     // Forward request to target
     console.log(`[Proxy] Incoming request: ${clientReq.method} ${clientReq.url}`);
     const proxyReq = http.request(options, (proxyRes) => {
+        console.log(`[Proxy] Target replied: ${proxyRes.statusCode}`);
         clientRes.writeHead(proxyRes.statusCode, proxyRes.headers);
         proxyRes.pipe(clientRes, { end: true });
     });
