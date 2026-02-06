@@ -39,6 +39,16 @@ async function setWebhook() {
         }
 
         console.log(`✅ Found Instance: ${instanceName}`);
+        // Wrap payload in 'webhook' property as per validation error
+        const payload = {
+            webhook: {
+                enabled: true,
+                url: INTERNAL_WEBHOOK_URL,
+                webhookByEvents: false,
+                events: ['MESSAGES_UPSERT', 'MESSAGES_UPDATE', 'SEND_MESSAGE', 'CONNECTION_UPDATE']
+            }
+        };
+
         console.log(`Setting INTERNAL webhook to: ${INTERNAL_WEBHOOK_URL}...`);
 
         const response = await fetch(`${API_URL}/webhook/set/${instanceName}`, {
@@ -47,12 +57,7 @@ async function setWebhook() {
                 'Content-Type': 'application/json',
                 'apikey': API_KEY
             },
-            body: JSON.stringify({
-                enabled: true,
-                url: INTERNAL_WEBHOOK_URL,
-                webhookByEvents: false,
-                events: ['MESSAGES_UPSERT', 'MESSAGES_UPDATE', 'SEND_MESSAGE', 'CONNECTION_UPDATE']
-            })
+            body: JSON.stringify(payload)
         });
 
         if (!response.ok) {
