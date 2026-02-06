@@ -3,19 +3,13 @@ const fs = require('fs');
 
 console.log('--- VPS DIAGNOSTICS ---\n');
 
-// 1. Check Port 3000 binding
-console.log('1. Checking Port 3000 Binding (Next.js):');
+// 1. Check ALL Port Bindings
+console.log('1. Scan Listening Ports (TCP):');
 try {
-    const netstat = execSync('netstat -tlpn | grep 3000').toString();
-    console.log(netstat.trim() || '❌ No service found on port 3000!');
-
-    if (netstat.includes('127.0.0.1:3000') && !netstat.includes(':::3000') && !netstat.includes('0.0.0.0:3000')) {
-        console.log('\n⚠️ WARNING: App is listening on LOCALHOST ONLY (127.0.0.1). Docker cannot reach it!');
-    } else {
-        console.log('✅ Port binding looks accessible (0.0.0.0 or :::)');
-    }
+    const netstat = execSync('netstat -tlpn').toString();
+    console.log(netstat);
 } catch (e) {
-    console.log('❌ Failed to run netstat (command might be missing)');
+    console.log('❌ Failed to run netstat');
 }
 
 console.log('\n----------------------------------------\n');
