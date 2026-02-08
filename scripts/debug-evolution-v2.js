@@ -104,15 +104,18 @@ async function debugEvolution() {
         }
     }
 
-    // 5. Test Send Media (Image)
+    // 5. Test Send Media (Base64) - Bypass Docker DNS issues
     if (targetNumber) {
-        console.log(`\n5. Testing Send Media to ${targetNumber}...`);
+        console.log(`\n5. Testing Send Media to ${targetNumber} (using Base64)...`);
+
+        // Simple 1x1 Red Pixel PNG
+        const base64Image = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
 
         const mediaPayload = {
             number: targetNumber,
-            media: "https://via.placeholder.com/150.png",
             mediatype: "image",
-            caption: "Media Test via Debug Script (v2)",
+            media: base64Image,
+            caption: "Base64 Media Test (Bypassing DNS)",
             options: {
                 delay: 1200,
                 presence: 'composing'
@@ -120,7 +123,7 @@ async function debugEvolution() {
         };
 
         try {
-            console.log('Sending Media payload:', JSON.stringify(mediaPayload));
+            console.log('Sending Base64 Media payload...');
             const res = await fetch(`${API_URL}/message/sendMedia/${INSTANCE_NAME}`, {
                 method: 'POST',
                 headers: {
