@@ -1,9 +1,19 @@
 // Native fetch is available in Node 18+
 // const fetch = require('node-fetch');
 
-const API_URL = 'http://localhost:8081'; // Adjust to http://evolution_api:8080 if running inside docker network
-const API_KEY = '4L8bYQOswTIRKermAtGBNC13goy5MIRKe'; // From docker-compose
-const INSTANCE_NAME = 'SmartFlowMain'; // Or 'client_CLIENTID_v2'
+// 1. Get Args
+const targetNumber = process.argv[2];
+const apiKeyArg = process.argv[3];
+const instanceNameArg = process.argv[4];
+
+if (!targetNumber || !apiKeyArg || !instanceNameArg) {
+    console.error('Usage: node scripts/debug-evolution-v2.js <target_number> <api_key> <instance_name>');
+    process.exit(1);
+}
+
+const API_URL = 'http://localhost:8081';
+const API_KEY = apiKeyArg;
+const INSTANCE_NAME = instanceNameArg;
 
 async function debugEvolution() {
     console.log('--- Debugging Evolution API V2 ---');
@@ -66,7 +76,8 @@ async function debugEvolution() {
 
         const payload = {
             number: targetNumber,
-            textMessage: { text: "Hello from SmartFlow Debugger" },
+            text: "Hello from SmartFlow Debugger (v2 payload)",
+            // textMessage: { text: "..." } // v1 style
             options: {
                 delay: 1200,
                 presence: 'composing'
