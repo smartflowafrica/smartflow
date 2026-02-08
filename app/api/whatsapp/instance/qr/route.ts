@@ -39,18 +39,28 @@ export async function GET(request: Request) {
         if (!data.base64 && !data.code) {
             console.warn('[API] No QR in response. Deleting stale instance and recreating...', JSON.stringify(data));
 
-            await whatsapp.deleteInstance();
-            await new Promise(r => setTimeout(r, 1000));
+            try {
+                const deleted = await whatsapp.deleteInstance();
+                console.log('[API] Delete instance result:', deleted);
+                await new Promise(r => setTimeout(r, 1500));
 
-            await whatsapp.createInstance(instanceName);
-            await new Promise(r => setTimeout(r, 1000));
+                await whatsapp.createInstance(instanceName);
+                console.log('[API] Instance recreated successfully');
+                await new Promise(r => setTimeout(r, 1500));
 
-            data = await whatsapp.connectInstance();
-            console.log('[API] QR Data After Recreate:', JSON.stringify(data, null, 2));
+                data = await whatsapp.connectInstance();
+                console.log('[API] QR Data After Recreate:', JSON.stringify(data, null, 2));
+            } catch (recoveryError: any) {
+                console.error('[API] Recovery failed:', recoveryError);
+                return NextResponse.json(
+                    { error: `Instance recovery failed: ${recoveryError.message}` },
+                    { status: 502 }
+                );
+            }
 
             if (!data.base64 && !data.code && data.status !== 'ERROR') {
                 return NextResponse.json(
-                    { error: `QR code unavailable after instance recreate. Evolution returned: ${JSON.stringify(data)}` },
+                    { error: `QR code unavailable after recreate. Evolution returned: ${JSON.stringify(data)}` },
                     { status: 502 }
                 );
             }

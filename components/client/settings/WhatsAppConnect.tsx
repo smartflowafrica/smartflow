@@ -55,7 +55,9 @@ export default function WhatsAppConnect({ initialStatus = 'disconnected' }: What
                 try {
                     // Pass connectingCount to API for auto-restart detection
                     const res = await fetch(`/api/whatsapp/instance/status?connectingCount=${connectingCount}`);
-                    const data = await res.json();
+                    if (!res.ok) { console.error('Status poll error:', res.status); return; }
+                    const data = await res.json().catch(() => null);
+                    if (!data) return;
 
                     if (data.state === 'open') {
                         setStatus('connected');
@@ -101,7 +103,14 @@ export default function WhatsAppConnect({ initialStatus = 'disconnected' }: What
 
             // 2. Get QR
             const qrRes = await fetch('/api/whatsapp/instance/qr');
-            const qrData = await qrRes.json();
+            const qrText = await qrRes.text();
+            let qrData: any;
+            try {
+                qrData = JSON.parse(qrText);
+            } catch {
+                console.error('QR endpoint returned non-JSON:', qrText.substring(0, 200));
+                throw new Error(`Server error (${qrRes.status}). Please try again.`);
+            }
 
             if (!qrRes.ok) {
                 throw new Error(qrData.error || `QR fetch failed (${qrRes.status})`);
