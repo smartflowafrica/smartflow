@@ -101,6 +101,11 @@ export class WhatsAppService {
      * Sets the webhook for a specific instance
      */
     public async setWebhook(instanceName: string): Promise<any> {
+        // USE INTERNAL DOCKER IP via PROXY for reliable delivery on VPS
+        const webhookUrl = process.env.EVOLUTION_WEBHOOK_URL || 'http://172.17.0.1:3001/api/webhooks/whatsapp';
+
+        console.log(`[WhatsAppService] Setting webhook to: ${webhookUrl}`);
+
         const response = await fetch(`${this.apiUrl}/webhook/set/${instanceName}`, {
             method: 'POST',
             headers: {
@@ -110,7 +115,7 @@ export class WhatsAppService {
             body: JSON.stringify({
                 webhook: {
                     enabled: true,
-                    url: 'https://smartflowafrica.com/api/webhooks/whatsapp',
+                    url: webhookUrl,
                     webhookByEvents: false,
                     events: ['MESSAGES_UPSERT', 'MESSAGES_UPDATE', 'SEND_MESSAGE']
                 }
