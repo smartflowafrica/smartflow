@@ -742,6 +742,25 @@ export class WhatsAppService {
         }
 
         try {
+            // 1. Fetch the image data on the App Side (Bypassing Docker DNS issues for Evolution)
+            console.log(`[sendMedia] Fetching media from: ${mediaUrl}`);
+            const mediaResponse = await fetch(mediaUrl);
+
+            if (!mediaResponse.ok) {
+                throw new Error(`Failed to fetch media from URL: ${mediaResponse.statusText}`);
+            }
+
+            const arrayBuffer = await mediaResponse.arrayBuffer();
+            const base64Media = Buffer.from(arrayBuffer).toString('base64');
+            const mimeType = mediaResponse.headers.get('content-type') || 'image/jpeg';
+
+            // Evolution v2 requires the prefix for base64
+            // e.g. "data:image/jpeg;base64,..." - actually, checking debug script, raw base64 might trigger it if we pass "mediatype"
+            // But usually v2 likes the full data URI or just the raw string if we specify type.
+            // The debug script used RAW base64 string.
+
+            console.log(`[sendMedia] Media converted to Base64 (${base64Media.length} chars). Sending to Evolution...`);
+
             const response = await fetch(`${this.apiUrl}/message/sendMedia/${this.instanceName}`, {
                 method: 'POST',
                 headers: {
@@ -750,16 +769,18 @@ export class WhatsAppService {
                 },
                 body: JSON.stringify({
                     number: finalTo,
-                    mediatype: mediaType,
-                    media: mediaUrl,
+                    mediatype: mediaType, // 'image', 'video'
+                    mimetype: mimeType,   // 'image/jpeg'
+                    media: base64Media,   // The Base64 string
                     caption: caption || '',
-                    fileName: fileName,
+                    fileName: fileName || 'media',
                     options: { delay: 1200 }
                 })
             });
 
             if (!response.ok) {
                 const errorText = await response.text();
+                // Check if it's just a timeout but sent?
                 console.error('Evolution Media API Error Response:', errorText);
                 throw new Error(`Evolution Media API Error: ${errorText}`);
             }
