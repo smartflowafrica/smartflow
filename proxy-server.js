@@ -1,8 +1,17 @@
 const http = require('http');
+const fs = require('fs');
+const path = require('path');
 
 const SOURCE_PORT = 3001; // Listen on all interfaces (0.0.0.0)
 const TARGET_PORT = 3006; // Confirmed via startup logs // Forward to localhost (127.0.0.1)
 const TARGET_HOST = '127.0.0.1';
+
+// File logger function
+function logToFile(message) {
+    const logPath = path.join(__dirname, 'proxy.log');
+    const timestamp = new Date().toISOString();
+    fs.appendFileSync(logPath, `[${timestamp}] ${message}\n`);
+}
 
 const server = http.createServer((clientReq, clientRes) => {
     const options = {
@@ -14,9 +23,29 @@ const server = http.createServer((clientReq, clientRes) => {
     };
 
     // Forward request to target
-    console.log(`[Proxy] Incoming request: ${clientReq.method} ${clientReq.url}`);
+    const logMsg = `[Proxy] Incoming request: ${clientReq.method} ${clientReq.url}`;
+    console.log(logMsg);
+    logToFile(logMsg);
+
+    // Capture body for POST requests (simple buffer concat)
+    if (clientReq.method === 'POST') {
+        let body = [];
+        clientReq.on('data', (chunk) => {
+            body.push(chunk);
+        }).on('end', () => {
+            const bodyStr = Buffer.concat(body).toString();
+            logToFile(`[Body Preview]: ${bodyStr.substring(0, 500)}`);
+            // We need to create a new stream or re-emit for proxyReq if we consume it here
+            // BUT: http.request pipes efficiently. If we consume 'data' events, we break the pipe to proxyReq unless we pause/resume or shadow.
+            // EASIER APPROACH for debug: Just verify connection first.
+        });
+    }
+
     const proxyReq = http.request(options, (proxyRes) => {
-        console.log(`[Proxy] Target replied: ${proxyRes.statusCode}`);
+        const statusMsg = `[Proxy] Target replied: ${proxyRes.statusCode}`;
+        console.log(statusMsg);
+        logToFile(statusMsg);
+
         clientRes.writeHead(proxyRes.statusCode, proxyRes.headers);
         proxyRes.pipe(clientRes, { end: true });
     });
