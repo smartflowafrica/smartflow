@@ -21,11 +21,17 @@ export async function POST(
         console.log(`[Inspection] Starting submission for Job ${jobId}`);
 
         // 1. Update Job with Inspection Data
+        // 1. Update Job with Inspection Data
         console.log('[Inspection] Updating DB...');
         const updatedJob = await prisma.job.update({
             where: { id: jobId },
             data: {
                 inspectionData: { items, notes },
+            },
+            include: {
+                client: {
+                    include: { integrations: true }
+                }
             }
         });
         console.log('[Inspection] DB Updated.');
@@ -38,14 +44,19 @@ export async function POST(
         // 3. Send WhatsApp Message
         console.log('[Inspection] Sending WhatsApp...');
 
-        try {
-            // Try native WhatsApp Service first (Evolution API)
-            const { WhatsAppService } = await import('@/lib/api/evolution-whatsapp');
-            const whatsapp = new WhatsAppService();
-            const isConnected = await whatsapp.isConnected(updatedJob.clientId);
+        const whatsappInstanceId = updatedJob.client.integrations?.whatsappInstanceId;
 
-            if (isConnected) {
-                console.log('[Inspection] Using Native WhatsApp Service...');
+        if (whatsappInstanceId) {
+            try {
+                // Try native WhatsApp Service first (Evolution API)
+                const { WhatsAppService } = await import('@/lib/api/evolution-whatsapp');
+                const whatsapp = new WhatsAppService(whatsappInstanceId); // Use Dynamic Instance
+                const isConnected = await whatsapp.isConnected(updatedJob.clientId); // This actually checks DB status mostly, or could check API
+
+                // If we have an instance ID, we assume we should try to use it.
+                // ideally isConnected checks the actual API state.
+
+                console.log(`[Inspection] Using Native WhatsApp Service (Instance: ${whatsappInstanceId})...`);
                 await whatsapp.sendMedia(
                     updatedJob.customerPhone,
                     base64,
@@ -55,32 +66,31 @@ export async function POST(
                     filename
                 );
                 console.log('[Inspection] WhatsApp Sent (Native).');
-            } else {
-                // Fallback to n8n if available
-                const integration = await prisma.integration.findUnique({
-                    where: { clientId: updatedJob.clientId }
-                });
 
-                if (integration?.n8nWebhookUrl) {
-                    console.log('[Inspection] Using n8n Webhook...');
-                    await fetch(integration.n8nWebhookUrl, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            action: 'send_media',
-                            phone: updatedJob.customerPhone,
-                            file: base64,
-                            filename: filename,
-                            caption: `🚗 Vehicle Inspection Report for ${updatedJob.customerName}\n\nOur mechanic has completed the checkout. Please see the attached report for details.`
-                        })
-                    });
-                    console.log('[Inspection] WhatsApp Sent (n8n).');
-                } else {
-                    console.log('[Inspection] No WhatsApp connection or Webhook found.');
-                }
+            } catch (wsError) {
+                console.error('[Inspection] WhatsApp Error:', wsError);
             }
-        } catch (wsError) {
-            console.error('[Inspection] WhatsApp Error:', wsError);
+        } else {
+            // Fallback to n8n if available (Legacy)
+            const integration = updatedJob.client.integrations;
+
+            if (integration?.n8nWebhookUrl) {
+                console.log('[Inspection] Using n8n Webhook...');
+                await fetch(integration.n8nWebhookUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'send_media',
+                        phone: updatedJob.customerPhone,
+                        file: base64,
+                        filename: filename,
+                        caption: `🚗 Vehicle Inspection Report for ${updatedJob.customerName}\n\nOur mechanic has completed the checkout. Please see the attached report for details.`
+                    })
+                });
+                console.log('[Inspection] WhatsApp Sent (n8n).');
+            } else {
+                console.log('[Inspection] No WhatsApp connection or Webhook found.');
+            }
         }
 
         return NextResponse.json({ success: true, message: 'Inspection processed' });
