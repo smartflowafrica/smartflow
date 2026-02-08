@@ -102,8 +102,43 @@ async function debugEvolution() {
         } catch (e) {
             console.error('Send Message Failed:', e.message);
         }
-    } else {
-        console.log('\n(Skipping Send Message Test - No number provided. Usage: node scripts/debug-evolution-v2.js <number>)');
+    } catch (e) {
+        console.error('Send Message Failed:', e.message);
+    }
+
+    // 5. Test Send Media (Image)
+    if (targetNumber) {
+        console.log(`\n5. Testing Send Media to ${targetNumber}...`);
+
+        const mediaPayload = {
+            number: targetNumber,
+            media: "https://via.placeholder.com/150.png",
+            mediatype: "image",
+            caption: "Media Test via Debug Script (v2)",
+            options: {
+                delay: 1200,
+                presence: 'composing'
+            }
+        };
+
+        try {
+            console.log('Sending Media payload:', JSON.stringify(mediaPayload));
+            const res = await fetch(`${API_URL}/message/sendMedia/${INSTANCE_NAME}`, {
+                method: 'POST',
+                headers: {
+                    'apikey': API_KEY,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(mediaPayload)
+            });
+
+            console.log(`Status: ${res.status}`);
+            const text = await res.text();
+            console.log(`Response: ${text}`);
+
+        } catch (e) {
+            console.error('Send Media Failed:', e.message);
+        }
     }
 }
 
