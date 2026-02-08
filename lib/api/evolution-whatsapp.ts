@@ -750,12 +750,10 @@ export class WhatsAppService {
                 },
                 body: JSON.stringify({
                     number: finalTo,
-                    mediaMessage: {
-                        mediatype: mediaType, // Dynamic type
-                        media: mediaUrl,
-                        caption: caption || '',
-                        fileName: fileName // Use provided filename or let API decide
-                    },
+                    mediatype: mediaType,
+                    media: mediaUrl,
+                    caption: caption || '',
+                    fileName: fileName,
                     options: { delay: 1200 }
                 })
             });
