@@ -7,6 +7,10 @@ import { headers } from 'next/headers';
 // Initialize service
 const whatsapp = new WhatsAppService();
 
+export async function GET() {
+    return NextResponse.json({ status: 'alive', message: 'Webhook endpoint is reachable' });
+}
+
 export async function POST(req: Request) {
     try {
         // 1. Get JSON Payload (Evolution sends JSON)
