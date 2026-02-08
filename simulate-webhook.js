@@ -2,7 +2,7 @@ const http = require('http');
 
 // CONFIG
 const PROXY_PORT = 3001;
-const APP_PORT = 4000;
+const APP_PORT = 3006;
 const INSTANCE_ID = 'ce19b768-d033-4175-95a4-f38d2a4234d8';
 const REMOTE_JID = '2348099999999@s.whatsapp.net';
 
