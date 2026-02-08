@@ -1,7 +1,7 @@
 // Native fetch is available in Node 18+
 // const fetch = require('node-fetch');
 
-const API_URL = 'http://localhost:8081';
+const API_URL = 'http://localhost:8081'; // Adjust to http://evolution_api:8080 if running inside docker network
 const API_KEY = '4L8bYQOswTIRKermAtGBNC13goy5MIRKe'; // From docker-compose
 const INSTANCE_NAME = 'SmartFlowMain'; // Or 'client_CLIENTID_v2'
 
@@ -57,6 +57,42 @@ async function debugEvolution() {
 
     } catch (e) {
         console.error('Connect Failed:', e.message);
+    }
+
+    // 4. Test Send Message (if number provided)
+    const targetNumber = process.argv[2]; // Get number from command line
+    if (targetNumber) {
+        console.log(`\n4. Testing Send Message to ${targetNumber}...`);
+
+        const payload = {
+            number: targetNumber,
+            textMessage: { text: "Hello from SmartFlow Debugger" },
+            options: {
+                delay: 1200,
+                presence: 'composing'
+            }
+        };
+
+        try {
+            console.log('Sending payload:', JSON.stringify(payload));
+            const res = await fetch(`${API_URL}/message/sendText/${INSTANCE_NAME}`, {
+                method: 'POST',
+                headers: {
+                    'apikey': API_KEY,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            });
+
+            console.log(`Status: ${res.status}`);
+            const text = await res.text();
+            console.log(`Response: ${text}`);
+
+        } catch (e) {
+            console.error('Send Message Failed:', e.message);
+        }
+    } else {
+        console.log('\n(Skipping Send Message Test - No number provided. Usage: node scripts/debug-evolution-v2.js <number>)');
     }
 }
 
