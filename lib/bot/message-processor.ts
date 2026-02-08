@@ -413,7 +413,7 @@ export class MessageProcessor {
     public async getServiceCatalog(clientId: string): Promise<string> {
         const services = await prisma.service.findMany({
             where: { clientId, isActive: true },
-            take: 10,
+            take: 50,
             orderBy: { name: 'asc' }
         });
 
@@ -446,7 +446,7 @@ export class MessageProcessor {
                 const sortedServices = await prisma.service.findMany({
                     where: { clientId, isActive: true },
                     orderBy: { name: 'asc' },
-                    take: 10
+                    take: 50
                 });
 
                 if (index >= 0 && index < sortedServices.length) {
