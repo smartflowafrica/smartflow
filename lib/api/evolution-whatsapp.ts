@@ -101,8 +101,8 @@ export class WhatsAppService {
      * Sets the webhook for a specific instance
      */
     public async setWebhook(instanceName: string): Promise<any> {
-        // USE INTERNAL DOCKER IP via PROXY for reliable delivery on VPS
-        const webhookUrl = process.env.EVOLUTION_WEBHOOK_URL || 'http://172.17.0.1:3001/api/webhooks/whatsapp';
+        // USE INTERNAL DOCKER IP via PROXY (Correct Gateway detected: 172.18.0.1)
+        const webhookUrl = process.env.EVOLUTION_WEBHOOK_URL || 'http://172.18.0.1:3001/api/webhooks/whatsapp';
 
         console.log(`[WhatsAppService] Setting webhook to: ${webhookUrl}`);
 
