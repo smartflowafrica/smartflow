@@ -341,12 +341,11 @@ export class WhatsAppService {
         const attemptSend = async (signal?: AbortSignal) => {
             const bodyPayload = {
                 number: formattedTo,
-                textMessage: { text: message },
+                text: message,
                 options: {
                     delay: 1200,
                     presence: 'composing',
-                    linkPreview: false,
-                    forceSend: true
+                    linkPreview: false
                 }
             };
             console.log(`[sendMessage] Sending Payload:`, JSON.stringify(bodyPayload));
