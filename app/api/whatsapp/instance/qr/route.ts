@@ -25,6 +25,15 @@ export async function GET(request: Request) {
         const data = await whatsapp.connectInstance();
         console.log('[API] QR Data Received:', JSON.stringify(data, null, 2));
 
+        // If connectInstance returned an error, propagate it as HTTP error
+        if (data.status === 'ERROR') {
+            console.error('[API] QR Connect Error:', data.error);
+            return NextResponse.json(
+                { error: data.error || 'Failed to connect to WhatsApp service' },
+                { status: 502 }
+            );
+        }
+
         // Evolution v1.8 usually returns { base64: "...", code: "..." }
         // If connected, it might return { instance: ..., status: "open" } without base64
 

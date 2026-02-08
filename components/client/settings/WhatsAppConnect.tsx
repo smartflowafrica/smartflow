@@ -103,14 +103,18 @@ export default function WhatsAppConnect({ initialStatus = 'disconnected' }: What
             const qrRes = await fetch('/api/whatsapp/instance/qr');
             const qrData = await qrRes.json();
 
+            if (!qrRes.ok) {
+                throw new Error(qrData.error || `QR fetch failed (${qrRes.status})`);
+            }
+
             if (qrData.data?.base64) {
                 setQrCode(qrData.data.base64);
                 setPolling(true); // Start listening for scan
             } else if (qrData.data?.instance?.state === 'open') {
                 setStatus('connected');
                 toast.success('Already connected!');
-            } else if (qrData.error) {
-                throw new Error(qrData.error);
+            } else if (qrData.error || qrData.data?.error) {
+                throw new Error(qrData.error || qrData.data?.error);
             } else {
                 toast.error('Could not fetch QR code. Please check console for details.');
             }
