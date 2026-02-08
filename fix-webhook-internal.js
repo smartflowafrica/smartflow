@@ -8,9 +8,13 @@ async function tryEndpoint(path) {
             method: 'GET',
             headers: { 'apikey': API_KEY }
         });
-        if (!response.ok) return null;
+        if (!response.ok) {
+            console.log(`⚠️ Endpoint ${path} returned ${response.status} ${response.statusText}`);
+            return null;
+        }
         return await response.json();
     } catch (e) {
+        console.error(`❌ Connection Error to ${API_URL}${path}:`, e.message);
         return null;
     }
 }
