@@ -81,7 +81,19 @@ async function setWebhook() {
 
         const data = await response.json();
         console.log('🎉 Webhook Set Successfully:', JSON.stringify(data, null, 2));
-        console.log('\n👉 Now send a test message from your phone. It should work instantly!');
+
+        // CHECK CONNECTION STATE
+        console.log('\n🔍 Checking Connection State...');
+        const state = await tryEndpoint(`/instance/connectionState/${instanceName}`);
+        console.log('📊 Connection State:', JSON.stringify(state, null, 2));
+
+        if (state?.state === 'open') {
+            console.log('\n✅ Instance is CONNECTED and READY!');
+            console.log('👉 Send "Test 7" from your phone now. It should appear in the App.');
+        } else {
+            console.log('\n⚠️ Instance is NOT `open` (Request returned: ' + (state?.state || 'unknown') + ')');
+            console.log('👉 Please wait a moment or scan the QR code again if needed.');
+        }
 
     } catch (error) {
         console.error('Error setting webhook:', error.message);
