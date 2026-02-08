@@ -102,8 +102,6 @@ async function debugEvolution() {
         } catch (e) {
             console.error('Send Message Failed:', e.message);
         }
-    } catch (e) {
-        console.error('Send Message Failed:', e.message);
     }
 
     // 5. Test Send Media (Image)
