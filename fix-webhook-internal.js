@@ -39,7 +39,7 @@ async function setWebhook() {
         }
 
         console.log(`✅ Found Instance: ${instanceName}`);
-        // Wrap payload in 'webhook' property as per validation error
+        // Wrap payload in 'webhook' property as per v2 validation
         const payload = {
             webhook: {
                 enabled: true,
