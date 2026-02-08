@@ -205,3 +205,53 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'Failed to create service' }, { status: 500 });
     }
 }
+
+export async function DELETE(request: Request) {
+    try {
+        const session = await getServerSession(authOptions);
+        if (!session?.user?.email) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const dbUser = await prisma.user.findUnique({
+            where: { email: session.user.email },
+            include: { client: true }
+        });
+
+        if (!dbUser?.client) {
+            return NextResponse.json({ error: 'Client not found' }, { status: 404 });
+        }
+
+        const body = await request.json();
+        const { ids } = body;
+
+        if (!Array.isArray(ids) || ids.length === 0) {
+            return NextResponse.json({ error: 'No services selected' }, { status: 400 });
+        }
+
+        // 1. Verify all services belong to client (Optional, but good for safety, 
+        // strictly deleteMany with clientId in logic also works and is faster)
+
+        // 2. Attempt Delete
+        // We use deleteMany so we can ensure clientId matches for all deleted records
+        const result = await prisma.service.deleteMany({
+            where: {
+                id: { in: ids },
+                clientId: dbUser.client.id
+            }
+        });
+
+        return NextResponse.json({ success: true, count: result.count });
+    } catch (error: any) {
+        console.error('Bulk delete error:', error);
+        // Check for Prisma "Foreign Key Constraint" error (P2003)
+        // Note: deleteMany might fail if ANY record has constraint? 
+        // Actually deleteMany usually throws if any record violates foreign key.
+        if (error.code === 'P2003') {
+            return NextResponse.json({
+                error: 'Cannot delete some services because they are linked to existing Jobs or Appointments.'
+            }, { status: 409 });
+        }
+        return NextResponse.json({ error: 'Bulk delete failed' }, { status: 500 });
+    }
+}

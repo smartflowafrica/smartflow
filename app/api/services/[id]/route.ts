@@ -70,16 +70,18 @@ export async function PATCH(
             return NextResponse.json({ error: 'Service not found' }, { status: 404 });
         }
 
+        // Destructure allowed fields to prevent unsafe updates (e.g. clientId, id)
+        const {
+            name, description, price, duration, category,
+            metadata, isActive, commitmentFee, pricingRules
+        } = body;
+
         const updatedService = await prisma.service.update({
             where: { id: params.id },
             data: {
-                ...body,
-                updatedAt: new Date() // Assuming updatedAt column exists. If not, Prisma might ignore or error. 
-                // Checking schema... Service doesn't have updatedAt in outline from step 2407 clearly visible? 
-                // Ah, outline showed truncated. But usually yes. If not, I'll remove it.
-                // Wait, in step 2407 Service model snippet showed "createdAt DateTime @default(now())" but truncated.
-                // I will safely omit updatedAt if I am not sure, OR I will assume standard practice.
-                // Actually, let's omit updatedAt to be safe unless I see it.
+                name, description, price, duration, category,
+                metadata, isActive, commitmentFee, pricingRules,
+                // updatedAt is handled automatically by Prisma @updatedAt
             }
         });
 
@@ -116,6 +118,8 @@ export async function DELETE(
         });
 
         if (!existingService || existingService.clientId !== dbUser.clientId) {
+            // Return success if already gone? Or 404? 
+            // 404 is better for specific "delete this" request.
             return NextResponse.json({ error: 'Service not found or unauthorized' }, { status: 404 });
         }
 
@@ -124,8 +128,13 @@ export async function DELETE(
         });
 
         return NextResponse.json({ success: true });
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error deleting service:', error);
+        if (error.code === 'P2003') {
+            return NextResponse.json({
+                error: 'Cannot delete this service because it is linked to existing Jobs or Appointments.'
+            }, { status: 409 });
+        }
         return NextResponse.json({ error: 'Failed to delete service' }, { status: 500 });
     }
 }

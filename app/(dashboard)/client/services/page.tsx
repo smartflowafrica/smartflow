@@ -31,10 +31,14 @@ export default function ServicesPage() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingService, setEditingService] = useState<Service | null>(null);
 
+    // Bulk Select State
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
     // Delete Modal State
-    const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; id: string | null }>({
+    const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; id: string | null; isBulk?: boolean }>({
         isOpen: false,
-        id: null
+        id: null,
+        isBulk: false
     });
     const [isDeleting, setIsDeleting] = useState(false);
 
@@ -110,6 +114,7 @@ export default function ServicesPage() {
             if (!res.ok) throw new Error('Failed to fetch services');
             const data = await res.json();
             setServices(data.services || []);
+            setSelectedIds(new Set()); // Clear selection on refresh
         } catch (error) {
             console.error('Error:', error);
             toast.error('Failed to load services');
@@ -158,7 +163,6 @@ export default function ServicesPage() {
         const formData = new FormData(e.currentTarget);
 
         const metadata = images.length > 0 ? { images } : undefined;
-        // Removed postToStatus as it's not in the schema
 
         const data = {
             name: formData.get('name'),
@@ -185,7 +189,9 @@ export default function ServicesPage() {
                 body: JSON.stringify(data)
             });
 
-            if (!res.ok) throw new Error('Failed to save service');
+            const responseData = await res.json();
+
+            if (!res.ok) throw new Error(responseData.error || 'Failed to save service');
 
             toast.success(editingService ? `${serviceLabel} updated` : `${serviceLabel} created`);
             setIsModalOpen(false);
@@ -197,24 +203,63 @@ export default function ServicesPage() {
         }
     };
 
+    // Selection Handlers
+    const toggleSelect = (id: string) => {
+        const newSelection = new Set(selectedIds);
+        if (newSelection.has(id)) {
+            newSelection.delete(id);
+        } else {
+            newSelection.add(id);
+        }
+        setSelectedIds(newSelection);
+    };
+
+    const toggleSelectAll = () => {
+        if (selectedIds.size === filteredServices.length) {
+            setSelectedIds(new Set());
+        } else {
+            setSelectedIds(new Set(filteredServices.map(s => s.id)));
+        }
+    };
+
     // Modified to use Modal state
     const handleDelete = (id: string) => {
-        setDeleteModal({ isOpen: true, id });
+        setDeleteModal({ isOpen: true, id, isBulk: false });
+    };
+
+    const handleBulkDelete = () => {
+        if (selectedIds.size === 0) return;
+        setDeleteModal({ isOpen: true, id: null, isBulk: true });
     };
 
     // Actual Delete Function
     const confirmDelete = async () => {
-        if (!deleteModal.id) return;
         setIsDeleting(true);
 
         try {
-            const res = await fetch(`/api/services/${deleteModal.id}`, { method: 'DELETE' });
-            if (!res.ok) throw new Error('Failed to delete');
-            toast.success(`${serviceLabel} deleted`);
+            let res;
+            if (deleteModal.isBulk) {
+                res = await fetch('/api/services', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ids: Array.from(selectedIds) })
+                });
+            } else if (deleteModal.id) {
+                res = await fetch(`/api/services/${deleteModal.id}`, { method: 'DELETE' });
+            }
+
+            if (!res) return;
+            const data = await res.json();
+
+            if (!res.ok) throw new Error(data.error || 'Failed to delete');
+
+            toast.success(deleteModal.isBulk ? 'Services deleted successfully' : `${serviceLabel} deleted`);
             fetchServices();
-            setDeleteModal({ isOpen: false, id: null });
-        } catch (error) {
-            toast.error('Failed to delete service');
+            setDeleteModal({ isOpen: false, id: null, isBulk: false });
+            if (deleteModal.isBulk) setSelectedIds(new Set());
+
+        } catch (error: any) {
+            toast.error(error.message || 'Failed to delete service(s)');
         } finally {
             setIsDeleting(false);
         }
@@ -232,16 +277,27 @@ export default function ServicesPage() {
                     <h1 className="text-2xl font-bold text-slate-900">{servicesLabel} & Pricing</h1>
                     <p className="text-slate-500">Manage your {servicesLabel.toLowerCase()} offerings and prices</p>
                 </div>
-                <button
-                    onClick={() => {
-                        setEditingService(null);
-                        setIsModalOpen(true);
-                    }}
-                    className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 transition-colors"
-                >
-                    <Plus size={20} />
-                    Add New {serviceLabel}
-                </button>
+                <div className="flex gap-2">
+                    {selectedIds.size > 0 && (
+                        <button
+                            onClick={handleBulkDelete}
+                            className="bg-red-50 text-red-600 border border-red-200 px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-red-100 transition-colors"
+                        >
+                            <Trash2 size={20} />
+                            Delete Selected ({selectedIds.size})
+                        </button>
+                    )}
+                    <button
+                        onClick={() => {
+                            setEditingService(null);
+                            setIsModalOpen(true);
+                        }}
+                        className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 transition-colors"
+                    >
+                        <Plus size={20} />
+                        Add New {serviceLabel}
+                    </button>
+                </div>
             </div>
 
             {/* Search */}
@@ -256,6 +312,19 @@ export default function ServicesPage() {
                 />
             </div>
 
+            {/* Selection Status */}
+            {services.length > 0 && (
+                <div className="mb-4 flex items-center gap-2">
+                    <input
+                        type="checkbox"
+                        checked={filteredServices.length > 0 && selectedIds.size === filteredServices.length}
+                        onChange={toggleSelectAll}
+                        className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span className="text-sm text-slate-600">Select All</span>
+                </div>
+            )}
+
             {/* Services List */}
             {isLoading ? (
                 <div className="text-center py-12 text-slate-500">Loading {servicesLabel.toLowerCase()}...</div>
@@ -266,8 +335,25 @@ export default function ServicesPage() {
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {filteredServices.map(service => (
-                        <div key={service.id} className="bg-white p-6 rounded-xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
-                            <div className="flex justify-between items-start mb-4">
+                        <div
+                            key={service.id}
+                            className={`bg-white p-6 rounded-xl border shadow-sm hover:shadow-md transition-shadow relative ${selectedIds.has(service.id) ? 'border-blue-500 ring-1 ring-blue-500' : 'border-slate-100'
+                                }`}
+                        >
+                            {/* Selection Checkbox */}
+                            <div className="absolute top-4 left-4 z-10">
+                                <input
+                                    type="checkbox"
+                                    checked={selectedIds.has(service.id)}
+                                    onChange={(e) => {
+                                        e.stopPropagation();
+                                        toggleSelect(service.id);
+                                    }}
+                                    className="w-5 h-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                />
+                            </div>
+
+                            <div className="flex justify-between items-start mb-4 pl-8"> {/* Added padding-left to avoid overlap */}
                                 <span className="px-2 py-1 bg-blue-50 text-blue-600 text-xs font-semibold rounded-md uppercase tracking-wide">
                                     {service.category || 'General'}
                                 </span>
@@ -479,11 +565,14 @@ export default function ServicesPage() {
             {/* Confirmation Modal */}
             <ConfirmationModal
                 isOpen={deleteModal.isOpen}
-                onClose={() => setDeleteModal({ isOpen: false, id: null })}
+                onClose={() => setDeleteModal({ isOpen: false, id: null, isBulk: false })}
                 onConfirm={confirmDelete}
-                title={`Delete ${serviceLabel}?`}
-                message={`Are you sure you want to delete this ${serviceLabel.toLowerCase()}? This action cannot be undone.`}
-                confirmText="Delete"
+                title={deleteModal.isBulk ? `Delete Selected ${servicesLabel}?` : `Delete ${serviceLabel}?`}
+                message={deleteModal.isBulk
+                    ? `Are you sure you want to delete ${selectedIds.size} ${servicesLabel.toLowerCase()}? This action cannot be undone.`
+                    : `Are you sure you want to delete this ${serviceLabel.toLowerCase()}? This action cannot be undone.`
+                }
+                confirmText={deleteModal.isBulk ? "Delete Selected" : "Delete"}
                 isLoading={isDeleting}
                 variant="danger"
             />
