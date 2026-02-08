@@ -70,24 +70,28 @@ export class WhatsAppService {
                 'apikey': this.apiKey
             },
             body: JSON.stringify({
-                instanceName: instanceName,
                 qrcode: true,
-                console.log('[WhatsAppService] Instance is already connected.');
-                return { instance: { state: 'open', status: 'connected' } };
-            }
+                integration: 'WHATSAPP-BAILEYS'
+            })
+        });
 
-                    console.log('[WhatsAppService] Instance exists but NOT connected. Deleting and Re-creating...');
-            await this.deleteInstance();
-            // Retry creation (one level deep)
-            return await this.createInstance(instanceName, integrationId);
-
-        } catch (retryError) {
-            console.error('[WhatsAppService] Recovery failed:', retryError);
-            // Fallback to connect to at least show something, or throw
-            return this.connectInstance();
+        if (createResponse.status === 403) {
+            console.log('[WhatsAppService] Instance is already connected.');
+            return { instance: { state: 'open', status: 'connected' } };
         }
+
+        console.log('[WhatsAppService] Instance exists but NOT connected. Deleting and Re-creating...');
+        await this.deleteInstance();
+        // Retry creation (one level deep)
+        return await this.createInstance(instanceName, integrationId);
+
+    } catch(retryError) {
+        console.error('[WhatsAppService] Recovery failed:', retryError);
+        // Fallback to connect to at least show something, or throw
+        return this.connectInstance();
     }
-            throw new Error(`Failed to create instance: ${errorText}`);
+}
+throw new Error(`Failed to create instance: ${errorText}`);
         }
 
 const data = await response.json();
