@@ -39,8 +39,12 @@ export async function GET(
             }
         });
 
-    } catch (error) {
-        console.error('Download PDF Error:', error);
-        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    } catch (error: any) {
+        console.error('[Download PDF] FATAL ERROR:', error);
+        if (error.stack) console.error(error.stack);
+        return NextResponse.json(
+            { error: 'Internal Server Error', details: error.message },
+            { status: 500 }
+        );
     }
 }
