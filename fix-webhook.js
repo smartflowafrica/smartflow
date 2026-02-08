@@ -13,10 +13,12 @@ async function setWebhook() {
                 'apikey': API_KEY
             },
             body: JSON.stringify({
-                enabled: true,
-                url: 'https://smartflowafrica.com/api/webhooks/whatsapp',
-                webhookByEvents: false,
-                events: ['MESSAGES_UPSERT', 'MESSAGES_UPDATE', 'SEND_MESSAGE', 'CONNECTION_UPDATE']
+                webhook: {
+                    enabled: true,
+                    url: 'https://smartflowafrica.com/api/webhooks/whatsapp',
+                    webhookByEvents: false,
+                    events: ['MESSAGES_UPSERT', 'MESSAGES_UPDATE', 'SEND_MESSAGE', 'CONNECTION_UPDATE']
+                }
             })
         });
 
