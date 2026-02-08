@@ -742,17 +742,50 @@ export class WhatsAppService {
         }
 
         try {
-            // 1. Fetch the image data on the App Side (Bypassing Docker DNS issues for Evolution)
-            console.log(`[sendMedia] Fetching media from: ${mediaUrl}`);
-            const mediaResponse = await fetch(mediaUrl);
+            let base64Media = '';
+            let mimeType = 'image/jpeg'; // Default
 
-            if (!mediaResponse.ok) {
-                throw new Error(`Failed to fetch media from URL: ${mediaResponse.statusText}`);
+            // Check if mediaUrl is actually a URL or Base64/File Path
+            if (mediaUrl.startsWith('http')) {
+                // 1. Fetch the image data on the App Side (Bypassing Docker DNS issues for Evolution)
+                console.log(`[sendMedia] Fetching media from URL: ${mediaUrl}`);
+                const mediaResponse = await fetch(mediaUrl);
+
+                if (!mediaResponse.ok) {
+                    throw new Error(`Failed to fetch media from URL: ${mediaResponse.statusText}`);
+                }
+
+                const arrayBuffer = await mediaResponse.arrayBuffer();
+                base64Media = Buffer.from(arrayBuffer).toString('base64');
+                mimeType = mediaResponse.headers.get('content-type') || 'image/jpeg';
+            } else {
+                // Assume it's already a Base64 string or Data URI
+                console.log(`[sendMedia] Using provided Base64 string (${mediaUrl.length} chars).`);
+
+                if (mediaUrl.startsWith('data:')) {
+                    // Extract base64 from data URI
+                    const matches = mediaUrl.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+                    if (matches && matches.length === 3) {
+                        mimeType = matches[1];
+                        base64Media = matches[2];
+                    } else {
+                        // Fallback - maybe just raw base64 after all?
+                        base64Media = mediaUrl.split(',')[1] || mediaUrl;
+                    }
+                } else {
+                    // Raw Base64
+                    base64Media = mediaUrl;
+
+                    // Try to guess mime from fileName if provided
+                    if (fileName) {
+                        const ext = fileName.split('.').pop()?.toLowerCase();
+                        if (ext === 'pdf') mimeType = 'application/pdf';
+                        else if (ext === 'png') mimeType = 'image/png';
+                        else if (ext === 'jpg' || ext === 'jpeg') mimeType = 'image/jpeg';
+                        else if (ext === 'mp4') mimeType = 'video/mp4';
+                    }
+                }
             }
-
-            const arrayBuffer = await mediaResponse.arrayBuffer();
-            const base64Media = Buffer.from(arrayBuffer).toString('base64');
-            const mimeType = mediaResponse.headers.get('content-type') || 'image/jpeg';
 
             // Evolution v2 requires the prefix for base64
             // e.g. "data:image/jpeg;base64,..." - actually, checking debug script, raw base64 might trigger it if we pass "mediatype"
