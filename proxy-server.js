@@ -1,7 +1,7 @@
 const http = require('http');
 
 const SOURCE_PORT = 3001; // Listen on all interfaces (0.0.0.0)
-const TARGET_PORT = 4000; // Found via diagnostics (Node process) // Forward to localhost (127.0.0.1)
+const TARGET_PORT = 3006; // Confirmed via startup logs // Forward to localhost (127.0.0.1)
 const TARGET_HOST = '127.0.0.1';
 
 const server = http.createServer((clientReq, clientRes) => {
