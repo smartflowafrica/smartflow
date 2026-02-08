@@ -191,12 +191,35 @@ export class WhatsAppService {
     }
 
 
+    public async logoutInstance(): Promise<boolean> {
+        try {
+            console.log(`[WhatsAppService] Logging out instance ${this.instanceName}...`);
+            const response = await fetch(`${this.apiUrl}/instance/logout/${this.instanceName}`, {
+                method: 'DELETE',
+                headers: { 'apikey': this.apiKey }
+            });
+            console.log(`[WhatsAppService] Logout result: ${response.status}`);
+            return response.ok;
+        } catch (error: any) {
+            console.error('[WhatsAppService] Logout error:', error.message);
+            return false;
+        }
+    }
+
     public async deleteInstance(): Promise<boolean> {
-        const response = await fetch(`${this.apiUrl}/instance/delete/${this.instanceName}`, {
-            method: 'DELETE',
-            headers: { 'apikey': this.apiKey }
-        });
-        return response.ok;
+        try {
+            console.log(`[WhatsAppService] Deleting instance ${this.instanceName}...`);
+            const response = await fetch(`${this.apiUrl}/instance/delete/${this.instanceName}`, {
+                method: 'DELETE',
+                headers: { 'apikey': this.apiKey }
+            });
+            const text = await response.text();
+            console.log(`[WhatsAppService] Delete result: ${response.status} - ${text}`);
+            return response.ok;
+        } catch (error: any) {
+            console.error('[WhatsAppService] Delete error:', error.message);
+            return false;
+        }
     }
 
     /**

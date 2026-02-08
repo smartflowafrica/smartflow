@@ -40,13 +40,16 @@ export async function GET(request: Request) {
             console.warn('[API] No QR in response. Deleting stale instance and recreating...', JSON.stringify(data));
 
             try {
-                const deleted = await whatsapp.deleteInstance();
-                console.log('[API] Delete instance result:', deleted);
-                await new Promise(r => setTimeout(r, 1500));
+                // Logout first to clear WhatsApp session, then delete
+                await whatsapp.logoutInstance();
+                await new Promise(r => setTimeout(r, 1000));
+
+                await whatsapp.deleteInstance();
+                await new Promise(r => setTimeout(r, 2000));
 
                 await whatsapp.createInstance(instanceName);
                 console.log('[API] Instance recreated successfully');
-                await new Promise(r => setTimeout(r, 1500));
+                await new Promise(r => setTimeout(r, 2000));
 
                 data = await whatsapp.connectInstance();
                 console.log('[API] QR Data After Recreate:', JSON.stringify(data, null, 2));
