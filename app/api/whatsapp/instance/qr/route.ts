@@ -34,9 +34,17 @@ export async function GET(request: Request) {
             );
         }
 
-        // Auto-recover: If no QR data (e.g. { count: 0 } = exhausted QR attempts),
-        // delete the stale instance, recreate it, and retry once
-        if (!data.base64 && !data.code) {
+        // Check if already connected (Evolution v2 sometimes returns state directly)
+        if (data.status === 'CONNECTED' || data.instance?.state === 'open') {
+            return NextResponse.json({
+                success: true,
+                data: { instance: { state: 'open' } }, // Normalize for frontend
+                dbStatus: 'connected'
+            });
+        }
+
+        // Auto-recover: If no QR data and NOT connected
+        if (!data.base64 && !data.code && data.status !== 'CONNECTED') {
             console.warn('[API] No QR in response. Deleting stale instance and recreating...', JSON.stringify(data));
 
             try {
@@ -61,22 +69,13 @@ export async function GET(request: Request) {
                 );
             }
 
-            if (!data.base64 && !data.code && data.status !== 'ERROR') {
+            if (!data.base64 && !data.code && data.status !== 'CONNECTED') {
                 return NextResponse.json(
                     { error: `QR code unavailable after recreate. Evolution returned: ${JSON.stringify(data)}` },
                     { status: 502 }
                 );
             }
-            if (data.status === 'ERROR') {
-                return NextResponse.json(
-                    { error: data.error || 'Failed to connect after recreate' },
-                    { status: 502 }
-                );
-            }
         }
-
-        // Evolution v1.8 usually returns { base64: "...", code: "..." }
-        // If connected, it might return { instance: ..., status: "open" } without base64
 
         // Check local DB status too
         const integration = await prisma.integration.findUnique({

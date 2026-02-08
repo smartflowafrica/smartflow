@@ -62,39 +62,50 @@ export class WhatsAppService {
      * Creates a new Evolution Instance for a client
      */
     public async createInstance(instanceName: string, integrationId?: string): Promise<boolean> {
-        // 1. Create Instance (without webhook first to be safe, though body contains integration settings)
-        const response = await fetch(`${this.apiUrl}/instance/create`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'apikey': this.apiKey
-            },
-            body: JSON.stringify({
-                instanceName: instanceName,
-                qrcode: true,
-                integration: 'WHATSAPP-BAILEYS'
-            })
-        });
+        // 1. Create Instance
+        console.log(`[WhatsAppService] Creating instance: ${instanceName}`);
 
-        // 2. Handle Existing Instance (403)
-        if (response.status === 403) {
-            console.log('[WhatsAppService] Instance already exists. Ensuring webhook...');
-            // Ensure webhook is set even if it exists
-            await this.setWebhook(instanceName).catch(e => console.error('Failed to set webhook on existing instance', e));
+        try {
+            const response = await fetch(`${this.apiUrl}/instance/create`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'apikey': this.apiKey
+                },
+                body: JSON.stringify({
+                    instanceName: instanceName,
+                    qrcode: true,
+                    integration: 'WHATSAPP-BAILEYS',
+                    reject_call: true,
+                    groups_ignore: true,
+                    always_online: true
+                })
+            });
+
+            const text = await response.text();
+
+            // 2. Handle Existing Instance (403 or specific error message)
+            if (response.status === 403 || text.includes('already exists')) {
+                console.log('[WhatsAppService] Instance already exists. Ensuring webhook...');
+                // Ensure webhook is set even if it exists
+                await this.setWebhook(instanceName).catch(e => console.error('Failed to set webhook on existing instance', e));
+                return true;
+            }
+
+            if (!response.ok) {
+                console.error('[WhatsAppService] Create Instance Failed:', text);
+                throw new Error(`Failed to create instance: ${text}`);
+            }
+
+            // 3. Success -> Set Webhook
+            console.log('[WhatsAppService] Instance created successfully');
+            await this.setWebhook(instanceName);
+
             return true;
+        } catch (e: any) {
+            console.error('[WhatsAppService] Create Instance Network Error:', e);
+            throw e;
         }
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error('[WhatsAppService] Create Instance Failed:', errorText);
-            throw new Error(`Failed to create instance: ${errorText}`);
-        }
-
-        // 3. Success -> Set Webhook
-        console.log('[WhatsAppService] Instance created successfully');
-        await this.setWebhook(instanceName);
-
-        return true;
     }
 
     /**
@@ -133,7 +144,7 @@ export class WhatsAppService {
      * Fetches the connection status and QR code if strictly needed
      */
     public async connectInstance(signal?: AbortSignal): Promise<{ base64?: string, code?: string, status: string, error?: string, [key: string]: any }> {
-        // Evolution v1.8 /instance/connect/{instance}
+        // Evolution v2 /instance/connect/{instance}
         try {
             const response = await fetch(`${this.apiUrl}/instance/connect/${this.instanceName}`, {
                 method: 'GET',
@@ -145,15 +156,32 @@ export class WhatsAppService {
 
             if (!response.ok) {
                 const errorText = await response.text();
+                // If 404, instance might not exist
+                if (response.status === 404) {
+                    return { status: 'ERROR', error: 'Instance not found. Please re-create.' };
+                }
                 console.error(`[WhatsAppService] Connect Failed (${response.status}): ${errorText}`);
                 return { status: 'ERROR', error: errorText };
             }
 
             const data = await response.json();
 
-            // Normalization for Evolution v2 (qrcode is nested)
+            // Evolution v2 Normalization:
+            // v2.3.x often returns { "qrcode": { "base64": "..." } }
+            // v1.x returned { "base64": "..." }
+
+            let base64 = data.base64;
             if (data.qrcode && data.qrcode.base64) {
-                return { ...data, base64: data.qrcode.base64 };
+                base64 = data.qrcode.base64;
+            }
+
+            // Sometimes v2 returns "instance": { "state": "open" } or similar if already connected
+            if (data.instance?.state === 'open' || data.state === 'open') {
+                return { status: 'CONNECTED', instance: data.instance || data };
+            }
+
+            if (base64) {
+                return { ...data, base64 };
             }
 
             return data;
