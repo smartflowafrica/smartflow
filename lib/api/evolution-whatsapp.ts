@@ -132,7 +132,7 @@ export class WhatsAppService {
     /**
      * Fetches the connection status and QR code if strictly needed
      */
-    public async connectInstance(signal?: AbortSignal): Promise<{ base64?: string, status: string, error?: string }> {
+    public async connectInstance(signal?: AbortSignal): Promise<{ base64?: string, code?: string, status: string, error?: string, [key: string]: any }> {
         // Evolution v1.8 /instance/connect/{instance}
         try {
             const response = await fetch(`${this.apiUrl}/instance/connect/${this.instanceName}`, {

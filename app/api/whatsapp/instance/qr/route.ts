@@ -22,7 +22,7 @@ export async function GET(request: Request) {
         const whatsapp = new WhatsAppService(instanceName);
 
         // Fetch QR Code / Connection Data
-        const data = await whatsapp.connectInstance();
+        let data = await whatsapp.connectInstance();
         console.log('[API] QR Data Received:', JSON.stringify(data, null, 2));
 
         // If connectInstance returned an error, propagate it as HTTP error
@@ -32,6 +32,34 @@ export async function GET(request: Request) {
                 { error: data.error || 'Failed to connect to WhatsApp service' },
                 { status: 502 }
             );
+        }
+
+        // Auto-recover: If no QR data (e.g. { count: 0 } = exhausted QR attempts),
+        // delete the stale instance, recreate it, and retry once
+        if (!data.base64 && !data.code) {
+            console.warn('[API] No QR in response. Deleting stale instance and recreating...', JSON.stringify(data));
+
+            await whatsapp.deleteInstance();
+            await new Promise(r => setTimeout(r, 1000));
+
+            await whatsapp.createInstance(instanceName);
+            await new Promise(r => setTimeout(r, 1000));
+
+            data = await whatsapp.connectInstance();
+            console.log('[API] QR Data After Recreate:', JSON.stringify(data, null, 2));
+
+            if (!data.base64 && !data.code && data.status !== 'ERROR') {
+                return NextResponse.json(
+                    { error: `QR code unavailable after instance recreate. Evolution returned: ${JSON.stringify(data)}` },
+                    { status: 502 }
+                );
+            }
+            if (data.status === 'ERROR') {
+                return NextResponse.json(
+                    { error: data.error || 'Failed to connect after recreate' },
+                    { status: 502 }
+                );
+            }
         }
 
         // Evolution v1.8 usually returns { base64: "...", code: "..." }

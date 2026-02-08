@@ -116,7 +116,8 @@ export default function WhatsAppConnect({ initialStatus = 'disconnected' }: What
             } else if (qrData.error || qrData.data?.error) {
                 throw new Error(qrData.error || qrData.data?.error);
             } else {
-                toast.error('Could not fetch QR code. Please check console for details.');
+                console.error('Unexpected QR response:', qrData);
+                toast.error(`QR code unavailable. Server returned keys: ${JSON.stringify(Object.keys(qrData.data || {}))}`);
             }
 
         } catch (error: any) {
