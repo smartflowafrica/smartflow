@@ -21,11 +21,22 @@ async function setWebhook() {
 
         // Try to find instances
         let instances = await tryEndpoint('/instance/fetchInstances');
-        if (!instances) instances = await tryEndpoint('/instance/fetch');
+        if (!instances || instances.length === 0) instances = await tryEndpoint('/instance/fetch');
+
+        // FALLBACK: Check for the specific instance we saw in logs
+        if (!instances || !Array.isArray(instances) || instances.length === 0) {
+            console.log('⚠️ No instances in list. Checking for known instance "client_cmjljfn5a00028oay4dfj4o4e_v2"...');
+            const specific = await tryEndpoint('/instance/fetch/client_cmjljfn5a00028oay4dfj4o4e_v2');
+            if (specific && (specific.instance || specific.name)) {
+                instances = [specific];
+            }
+        }
 
         if (!instances || !Array.isArray(instances) || instances.length === 0) {
             console.error('❌ NO INSTANCES FOUND!');
-            console.error('👉 Please go to your App, disconnect/reconnect, and SCAN the QR code first.');
+            console.error('👉 The API database might have been reset or is not loading the old volume.');
+            console.error('👉 Please go to your URL: http://smartflowafrica.com:8081');
+            console.error('👉 Create a new instance named "SmartFlowMain" and SCAN the QR code.');
             return;
         }
 
