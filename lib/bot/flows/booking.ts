@@ -280,9 +280,9 @@ export class BookingFlow implements ChatFlow {
                 }
             });
 
+
             // 3b. Create Job (Invoice Record)
-            // This ensures the commitment fee is tracked as a pending job/invoice in the dashboard
-            await prisma.job.create({
+            const job = await prisma.job.create({
                 data: {
                     clientId: context.clientId,
                     customerId: customer.id,
@@ -311,12 +311,20 @@ export class BookingFlow implements ChatFlow {
                     // Fetch Client Settings & Integration
                     const client = await prisma.client.findUnique({
                         where: { id: context.clientId },
-                        include: { integrations: true }
+                        include: { integrations: true, branding: true } // Include branding for bank details
                     });
 
-                    // Check for bank details in metadata
+                    // Check for bank details in branding or metadata
                     const meta = client?.metadata as any;
-                    if (meta?.bankName && meta?.accountNumber) {
+                    const branding = client?.branding;
+
+                    if (branding?.bankDetails) {
+                        const bank = branding.bankDetails as any;
+                        if (bank.bankName && bank.accountNumber) {
+                            bankDetails = `Bank: ${bank.bankName}\nAccount: ${bank.accountNumber}\nName: ${bank.accountName || client?.businessName}`;
+                        }
+                    } else if (meta?.bankName && meta?.accountNumber) {
+                        // Fallback to metadata
                         bankDetails = `Bank: ${meta.bankName}\nAccount: ${meta.accountNumber}\nName: ${meta.accountName || client?.businessName}`;
                     }
 
@@ -335,7 +343,8 @@ export class BookingFlow implements ChatFlow {
                         metadata: {
                             appointmentId: appointment.id,
                             clientId: context.clientId,
-                            type: 'COMMITMENT_FEE'
+                            type: 'COMMITMENT_FEE',
+                            jobId: job.id // Link payment to job
                         }
                     }, paystackKey);
 
@@ -343,7 +352,10 @@ export class BookingFlow implements ChatFlow {
 
                 } catch (pxError: any) {
                     console.error('Paystack initialization skipped/failed:', pxError.message);
-                    // Generate Text Invoice Fallback
+
+                    // Generate Text Invoice Fallback with PDF Link
+                    const invoiceUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/public/invoices/${job.id}`;
+
                     const invoiceMsg = [
                         `✅ Appointment Reserved!`,
                         ``,
@@ -351,6 +363,8 @@ export class BookingFlow implements ChatFlow {
                         `Service: ${serviceName}`,
                         `Date: ${date} @ ${time}`,
                         `Amount Due: ₦${fee.toLocaleString()}`,
+                        ``,
+                        `🔗 **Download Invoice:** ${invoiceUrl}`,
                         ``,
                         bankDetails ? `Please make a transfer to:\n${bankDetails}` : `An agent will contact you shortly with payment details.`,
                         ``,
