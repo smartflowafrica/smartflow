@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { WhatsAppService } from '@/lib/api/evolution-whatsapp';
 
 export async function GET(request: Request) {
     try {
@@ -105,10 +106,6 @@ export async function PATCH(request: Request) {
     }
 }
 
-import { WhatsAppService } from '@/lib/api/evolution-whatsapp';
-
-// ... imports
-
 export async function POST(request: Request) {
     try {
         const session = await getServerSession(authOptions);
@@ -137,20 +134,14 @@ export async function POST(request: Request) {
 
         const { name, description, price, duration, category, metadata, isActive, postToStatus, pricingRules, commitmentFee } = validation.data;
 
-        // Validated by zod now (removed manual checks)
-
         const service = await prisma.service.create({
             data: {
                 clientId: dbUser.client.id,
                 name, description,
-                price: price || 0, // Should be optional in schema, but for safety in logic if schema not reloaded? 
-                // Wait, if schema is Decimal?, then undefined is fine. 
-                // But TypeScript might still think it's required if types weren't regenerated. 
-                // Let's rely on loose typing or pass undefined.
-                // However, I will pass it as is.
+                price: price || 0,
                 duration, category, metadata,
                 pricingRules,
-                commitmentFee, // New Field
+                commitmentFee,
                 isActive: isActive !== undefined ? isActive : true
             }
         });
@@ -219,21 +210,20 @@ export async function DELETE(request: Request) {
         });
 
         if (!dbUser?.client) {
+            console.error('[BulkDelete] Client not found for user:', session.user.email);
             return NextResponse.json({ error: 'Client not found' }, { status: 404 });
         }
 
         const body = await request.json();
         const { ids } = body;
 
+        console.log(`[BulkDelete] Request from Client: ${dbUser.client.id}, IDs:`, ids);
+
         if (!Array.isArray(ids) || ids.length === 0) {
             return NextResponse.json({ error: 'No services selected' }, { status: 400 });
         }
 
-        // 1. Verify all services belong to client (Optional, but good for safety, 
-        // strictly deleteMany with clientId in logic also works and is faster)
-
         // 2. Attempt Delete
-        // We use deleteMany so we can ensure clientId matches for all deleted records
         const result = await prisma.service.deleteMany({
             where: {
                 id: { in: ids },
@@ -241,12 +231,11 @@ export async function DELETE(request: Request) {
             }
         });
 
+        console.log(`[BulkDelete] Deleted Count: ${result.count}`);
+
         return NextResponse.json({ success: true, count: result.count });
     } catch (error: any) {
-        console.error('Bulk delete error:', error);
-        // Check for Prisma "Foreign Key Constraint" error (P2003)
-        // Note: deleteMany might fail if ANY record has constraint? 
-        // Actually deleteMany usually throws if any record violates foreign key.
+        console.error('[BulkDelete] Error:', error);
         if (error.code === 'P2003') {
             return NextResponse.json({
                 error: 'Cannot delete some services because they are linked to existing Jobs or Appointments.'
