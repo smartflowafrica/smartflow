@@ -265,144 +265,169 @@ export class BookingFlow implements ChatFlow {
                 'Booked via WhatsApp Bot'
             ].filter(Boolean).join('\n');
 
-            // 3. Create Appointment
-            const appointment = await prisma.appointment.create({
-                data: {
-                    clientId: context.clientId,
-                    customerId: customer.id,
-                    customerName: name,
-                    customerPhone: context.customerPhone,
-                    serviceId,
-                    date: new Date(date),
-                    time,
-                    status,
-                    notes
-                }
+        }
             });
 
-            // 4. Generate Payment Link if Fee > 0
-            if (fee > 0) {
-                let paymentLink = null;
-                let bankDetails = null;
+    // 3. Create Appointment
+    const appointment = await prisma.appointment.create({
+        data: {
+            clientId: context.clientId,
+            customerId: customer.id,
+            customerName: name,
+            customerPhone: context.customerPhone,
+            serviceId,
+            date: new Date(date),
+            time,
+            status,
+            notes
+        }
+    });
 
-                try {
-                    // Fetch Client Settings & Integration
-                    const client = await prisma.client.findUnique({
-                        where: { id: context.clientId },
-                        include: { integrations: true }
-                    });
-
-                    // Check for bank details in metadata
-                    const meta = client?.metadata as any;
-                    if (meta?.bankName && meta?.accountNumber) {
-                        bankDetails = `Bank: ${meta.bankName}\nAccount: ${meta.accountNumber}\nName: ${meta.accountName || client?.businessName}`;
-                    }
-
-                    // Use client key if available, otherwise undefined (will fallback to env in lib/paystack)
-                    const paystackKey = client?.integrations?.paystackSecretKey || undefined;
-
-                    // If no key configured, skip directly to invoice
-                    if (!paystackKey && !process.env.PAYSTACK_SECRET_KEY) {
-                        throw new Error('Paystack not configured');
-                    }
-
-                    const payment = await initializePaystackPayment({
-                        email: customer.email || `${context.customerPhone}@smartflow.app`, // Fallback email
-                        amount: fee * 100, // Convert to kobo
-                        reference: `r-${appointment.id}-${Date.now()}`,
-                        metadata: {
-                            appointmentId: appointment.id,
-                            clientId: context.clientId,
-                            type: 'COMMITMENT_FEE'
-                        }
-                    }, paystackKey);
-
-                    paymentLink = payment.data.authorization_url;
-
-                } catch (pxError: any) {
-                    console.error('Paystack initialization skipped/failed:', pxError.message);
-                    // Generate Text Invoice Fallback
-                    const invoiceMsg = [
-                        `✅ Appointment Reserved!`,
-                        ``,
-                        `📄 **INVOICE GENERATED**`,
-                        `Service: ${serviceName}`,
-                        `Date: ${date} @ ${time}`,
-                        `Amount Due: ₦${fee.toLocaleString()}`,
-                        ``,
-                        bankDetails ? `Please make a transfer to:\n${bankDetails}` : `An agent will contact you shortly with payment details.`,
-                        ``,
-                        `⚠️ Please send proof of payment here to confirm your booking.`
-                    ].join('\n');
-
-                    return {
-                        response: invoiceMsg,
-                        nextStep: undefined,
-                        action: 'escalate' // Flag for human follow-up
-                    };
-                }
-
-                return {
-                    response: `✅ Appointment Reserved!\n\nService: ${serviceName}\nDate: ${date}\nTime: ${time}\n\n⚠️ **Action Required**: A commitment fee of ₦${fee.toLocaleString()} is required to confirm this booking.\n\nPlease pay here: ${paymentLink}`,
-                    nextStep: undefined
-                };
+            // 3b. Create Job (Invoice Record)
+            // This ensures the commitment fee is tracked as a pending job/invoice in the dashboard
+            await prisma.job.create({
+        data: {
+            clientId: context.clientId,
+            customerId: customer.id,
+            customerName: name,
+            customerPhone: context.customerPhone,
+            description: `Booking: ${serviceName}`,
+            status: 'PENDING',
+            paymentStatus: fee > 0 ? 'PENDING' : 'PAID', // Pending payment if fee > 0
+            price: fee > 0 ? fee : (Number(service?.price) || 0), // Use fee or service price
+            priority: 'MEDIUM',
+            branchId: service?.branchId,
+            metadata: {
+                appointmentId: appointment.id,
+                source: 'whatsapp_bot',
+                type: 'booking_invoice'
             }
+        }
+    });
 
-            return {
-                response: `✅ Appointment Confirmed!\n\nService: ${serviceName}\nDate: ${date}\nTime: ${time}\n\nWe look forward to seeing you, ${name}!`,
-                nextStep: undefined // End flow
-            };
+// 4. Generate Payment Link if Fee > 0
+if (fee > 0) {
+    let paymentLink = null;
+    let bankDetails = null;
+
+    try {
+        // Fetch Client Settings & Integration
+        const client = await prisma.client.findUnique({
+            where: { id: context.clientId },
+            include: { integrations: true }
+        });
+
+        // Check for bank details in metadata
+        const meta = client?.metadata as any;
+        if (meta?.bankName && meta?.accountNumber) {
+            bankDetails = `Bank: ${meta.bankName}\nAccount: ${meta.accountNumber}\nName: ${meta.accountName || client?.businessName}`;
+        }
+
+        // Use client key if available, otherwise undefined (will fallback to env in lib/paystack)
+        const paystackKey = client?.integrations?.paystackSecretKey || undefined;
+
+        // If no key configured, skip directly to invoice
+        if (!paystackKey && !process.env.PAYSTACK_SECRET_KEY) {
+            throw new Error('Paystack not configured');
+        }
+
+        const payment = await initializePaystackPayment({
+            email: customer.email || `${context.customerPhone}@smartflow.app`, // Fallback email
+            amount: fee * 100, // Convert to kobo
+            reference: `r-${appointment.id}-${Date.now()}`,
+            metadata: {
+                appointmentId: appointment.id,
+                clientId: context.clientId,
+                type: 'COMMITMENT_FEE'
+            }
+        }, paystackKey);
+
+        paymentLink = payment.data.authorization_url;
+
+    } catch (pxError: any) {
+        console.error('Paystack initialization skipped/failed:', pxError.message);
+        // Generate Text Invoice Fallback
+        const invoiceMsg = [
+            `✅ Appointment Reserved!`,
+            ``,
+            `📄 **INVOICE GENERATED**`,
+            `Service: ${serviceName}`,
+            `Date: ${date} @ ${time}`,
+            `Amount Due: ₦${fee.toLocaleString()}`,
+            ``,
+            bankDetails ? `Please make a transfer to:\n${bankDetails}` : `An agent will contact you shortly with payment details.`,
+            ``,
+            `⚠️ Please send proof of payment here to confirm your booking.`
+        ].join('\n');
+
+        return {
+            response: invoiceMsg,
+            nextStep: undefined,
+            action: 'escalate' // Flag for human follow-up
+        };
+    }
+
+    return {
+        response: `✅ Appointment Reserved!\n\nService: ${serviceName}\nDate: ${date}\nTime: ${time}\n\n⚠️ **Action Required**: A commitment fee of ₦${fee.toLocaleString()} is required to confirm this booking.\n\nPlease pay here: ${paymentLink}`,
+        nextStep: undefined
+    };
+}
+
+return {
+    response: `✅ Appointment Confirmed!\n\nService: ${serviceName}\nDate: ${date}\nTime: ${time}\n\nWe look forward to seeing you, ${name}!`,
+    nextStep: undefined // End flow
+};
 
         } catch (error) {
-            console.error('Booking failed', error);
-            return {
-                response: "I'm sorry, an error occurred while saving your booking. Please contact us directly.",
-                nextStep: undefined,
-                action: 'escalate'
-            };
-        }
+    console.error('Booking failed', error);
+    return {
+        response: "I'm sorry, an error occurred while saving your booking. Please contact us directly.",
+        nextStep: undefined,
+        action: 'escalate'
+    };
+}
     }
 
     // --- Helpers ---
     private async findService(clientId: string, query: string) {
-        // Simple fuzzy match or startsWith
-        const services = await prisma.service.findMany({
-            where: { clientId, isActive: true }
-        });
-        const lowerQuery = query.toLowerCase();
-        return services.find((s: any) => s.name.toLowerCase().includes(lowerQuery));
-    }
+    // Simple fuzzy match or startsWith
+    const services = await prisma.service.findMany({
+        where: { clientId, isActive: true }
+    });
+    const lowerQuery = query.toLowerCase();
+    return services.find((s: any) => s.name.toLowerCase().includes(lowerQuery));
+}
 
     private parseDate(input: string): string | null {
-        // TODO: Use 'chrono-node' or date-fns for relative dates
-        // For now, accept YYYY-MM-DD or simple keywords
-        const lower = input.toLowerCase();
-        const today = new Date();
+    // TODO: Use 'chrono-node' or date-fns for relative dates
+    // For now, accept YYYY-MM-DD or simple keywords
+    const lower = input.toLowerCase();
+    const today = new Date();
 
-        // Handle common typos for tomorrow
-        if (lower.includes('tomorrow') || lower.includes('tommorrow') || lower.includes('tomorow') || lower.includes('tmr')) {
-            const tmr = new Date(today);
-            tmr.setDate(today.getDate() + 1);
-            return tmr.toISOString().split('T')[0];
-        }
-        if (lower.includes('today')) {
-            return today.toISOString().split('T')[0];
-        }
-        // Basic Regex for YYYY-MM-DD
-        if (/^\d{4}-\d{2}-\d{2}$/.test(input)) return input;
-
-        return null;
+    // Handle common typos for tomorrow
+    if (lower.includes('tomorrow') || lower.includes('tommorrow') || lower.includes('tomorow') || lower.includes('tmr')) {
+        const tmr = new Date(today);
+        tmr.setDate(today.getDate() + 1);
+        return tmr.toISOString().split('T')[0];
     }
+    if (lower.includes('today')) {
+        return today.toISOString().split('T')[0];
+    }
+    // Basic Regex for YYYY-MM-DD
+    if (/^\d{4}-\d{2}-\d{2}$/.test(input)) return input;
+
+    return null;
+}
 
     private parseTime(input: string): string | null {
-        // Basic validator, returns HH:mm format
-        if (/^\d{1,2}:\d{2}\s?(am|pm)?$/i.test(input)) return input; // Normalize this later
-        if (/^\d{1,2}(am|pm)$/i.test(input)) return input;
-        return null;
-    }
+    // Basic validator, returns HH:mm format
+    if (/^\d{1,2}:\d{2}\s?(am|pm)?$/i.test(input)) return input; // Normalize this later
+    if (/^\d{1,2}(am|pm)$/i.test(input)) return input;
+    return null;
+}
 
-    private async checkAvailability(clientId: string, serviceId: string, dateStr: string, timeStr: string, duration: number = 30): Promise<boolean> {
-        // TODO: Use the real AvailabilityChecker
-        return true;
-    }
+    private async checkAvailability(clientId: string, serviceId: string, dateStr: string, timeStr: string, duration: number = 30): Promise < boolean > {
+    // TODO: Use the real AvailabilityChecker
+    return true;
+}
 }
