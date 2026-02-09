@@ -348,68 +348,61 @@ export class BookingFlow implements ChatFlow {
                 };
             }
 
-
             return {
-                response: `✅ Appointment Reserved!\n\nService: ${serviceName}\nDate: ${date}\nTime: ${time}\n\n⚠️ **Action Required**: A commitment fee of ₦${fee.toLocaleString()} is required to confirm this booking.\n\nPlease pay here: ${paymentLink}`,
-                nextStep: undefined
+                response: `✅ Appointment Confirmed!\n\nService: ${serviceName}\nDate: ${date}\nTime: ${time}\n\nWe look forward to seeing you, ${name}!`,
+                nextStep: undefined // End flow
+            };
+
+        } catch (error) {
+            console.error('Booking failed', error);
+            return {
+                response: "I'm sorry, an error occurred while saving your booking. Please contact us directly.",
+                nextStep: undefined,
+                action: 'escalate'
             };
         }
-
-            return {
-            response: `✅ Appointment Confirmed!\n\nService: ${serviceName}\nDate: ${date}\nTime: ${time}\n\nWe look forward to seeing you, ${name}!`,
-            nextStep: undefined // End flow
-        };
-
-    } catch(error) {
-        console.error('Booking failed', error);
-        return {
-            response: "I'm sorry, an error occurred while saving your booking. Please contact us directly.",
-            nextStep: undefined,
-            action: 'escalate'
-        };
     }
-}
 
     // --- Helpers ---
     private async findService(clientId: string, query: string) {
-    // Simple fuzzy match or startsWith
-    const services = await prisma.service.findMany({
-        where: { clientId, isActive: true }
-    });
-    const lowerQuery = query.toLowerCase();
-    return services.find((s: any) => s.name.toLowerCase().includes(lowerQuery));
-}
+        // Simple fuzzy match or startsWith
+        const services = await prisma.service.findMany({
+            where: { clientId, isActive: true }
+        });
+        const lowerQuery = query.toLowerCase();
+        return services.find((s: any) => s.name.toLowerCase().includes(lowerQuery));
+    }
 
     private parseDate(input: string): string | null {
-    // TODO: Use 'chrono-node' or date-fns for relative dates
-    // For now, accept YYYY-MM-DD or simple keywords
-    const lower = input.toLowerCase();
-    const today = new Date();
+        // TODO: Use 'chrono-node' or date-fns for relative dates
+        // For now, accept YYYY-MM-DD or simple keywords
+        const lower = input.toLowerCase();
+        const today = new Date();
 
-    // Handle common typos for tomorrow
-    if (lower.includes('tomorrow') || lower.includes('tommorrow') || lower.includes('tomorow') || lower.includes('tmr')) {
-        const tmr = new Date(today);
-        tmr.setDate(today.getDate() + 1);
-        return tmr.toISOString().split('T')[0];
-    }
-    if (lower.includes('today')) {
-        return today.toISOString().split('T')[0];
-    }
-    // Basic Regex for YYYY-MM-DD
-    if (/^\d{4}-\d{2}-\d{2}$/.test(input)) return input;
+        // Handle common typos for tomorrow
+        if (lower.includes('tomorrow') || lower.includes('tommorrow') || lower.includes('tomorow') || lower.includes('tmr')) {
+            const tmr = new Date(today);
+            tmr.setDate(today.getDate() + 1);
+            return tmr.toISOString().split('T')[0];
+        }
+        if (lower.includes('today')) {
+            return today.toISOString().split('T')[0];
+        }
+        // Basic Regex for YYYY-MM-DD
+        if (/^\d{4}-\d{2}-\d{2}$/.test(input)) return input;
 
-    return null;
-}
+        return null;
+    }
 
     private parseTime(input: string): string | null {
-    // Basic validator, returns HH:mm format
-    if (/^\d{1,2}:\d{2}\s?(am|pm)?$/i.test(input)) return input; // Normalize this later
-    if (/^\d{1,2}(am|pm)$/i.test(input)) return input;
-    return null;
-}
+        // Basic validator, returns HH:mm format
+        if (/^\d{1,2}:\d{2}\s?(am|pm)?$/i.test(input)) return input; // Normalize this later
+        if (/^\d{1,2}(am|pm)$/i.test(input)) return input;
+        return null;
+    }
 
-    private async checkAvailability(clientId: string, serviceId: string, dateStr: string, timeStr: string, duration: number = 30): Promise < boolean > {
-    // TODO: Use the real AvailabilityChecker
-    return true;
-}
+    private async checkAvailability(clientId: string, serviceId: string, dateStr: string, timeStr: string, duration: number = 30): Promise<boolean> {
+        // TODO: Use the real AvailabilityChecker
+        return true;
+    }
 }
