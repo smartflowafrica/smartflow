@@ -282,22 +282,28 @@ export class BookingFlow implements ChatFlow {
 
             // 4. Generate Payment Link if Fee > 0
             if (fee > 0) {
+                let paymentLink = null;
+                let bankDetails = null;
+
                 try {
-                    // Fetch Client Integration
-                    const integration = await prisma.integration.findUnique({
-                        where: { clientId: context.clientId }
+                    // Fetch Client Settings & Integration
+                    const client = await prisma.client.findUnique({
+                        where: { id: context.clientId },
+                        include: { integration: true }
                     });
 
-                    // Use client key if available, otherwise undefined (will fallback to env in lib/paystack)
-                    const paystackKey = integration?.paystackSecretKey || undefined;
+                    // Check for bank details in metadata
+                    const meta = client?.metadata as any;
+                    if (meta?.bankName && meta?.accountNumber) {
+                        bankDetails = `Bank: ${meta.bankName}\nAccount: ${meta.accountNumber}\nName: ${meta.accountName || client?.businessName}`;
+                    }
 
+                    // Use client key if available, otherwise undefined (will fallback to env in lib/paystack)
+                    const paystackKey = client?.integration?.paystackSecretKey || undefined;
+
+                    // If no key configured, skip directly to invoice
                     if (!paystackKey && !process.env.PAYSTACK_SECRET_KEY) {
-                        console.error(`[BookingFlow] Client ${context.clientId} Missing Paystack Key and no System Fallback`);
-                        return {
-                            response: `Your appointment is reserved, but online payment is not configured yet. An agent will contact you for the ₦${fee.toLocaleString()} commitment fee.`,
-                            nextStep: undefined,
-                            action: 'escalate'
-                        };
+                        throw new Error('Paystack not configured');
                     }
 
                     const payment = await initializePaystackPayment({
@@ -312,13 +318,27 @@ export class BookingFlow implements ChatFlow {
                     }, paystackKey);
 
                     paymentLink = payment.data.authorization_url;
+
                 } catch (pxError: any) {
-                    console.error('Paystack initialization failed', pxError);
-                    // Fallback to manual? Or error?
+                    console.error('Paystack initialization skipped/failed:', pxError.message);
+                    // Generate Text Invoice Fallback
+                    const invoiceMsg = [
+                        `✅ Appointment Reserved!`,
+                        ``,
+                        `📄 **INVOICE GENERATED**`,
+                        `Service: ${serviceName}`,
+                        `Date: ${date} @ ${time}`,
+                        `Amount Due: ₦${fee.toLocaleString()}`,
+                        ``,
+                        bankDetails ? `Please make a transfer to:\n${bankDetails}` : `An agent will contact you shortly with payment details.`,
+                        ``,
+                        `⚠️ Please send proof of payment here to confirm your booking.`
+                    ].join('\n');
+
                     return {
-                        response: `Your appointment is reserved, but we couldn't generate a payment link right now (${pxError.message || 'Error'}). An agent will contact you for the ₦${fee.toLocaleString()} commitment fee.`,
+                        response: invoiceMsg,
                         nextStep: undefined,
-                        action: 'escalate'
+                        action: 'escalate' // Flag for human follow-up
                     };
                 }
 
@@ -328,61 +348,68 @@ export class BookingFlow implements ChatFlow {
                 };
             }
 
-            return {
-                response: `✅ Appointment Confirmed!\n\nService: ${serviceName}\nDate: ${date}\nTime: ${time}\n\nWe look forward to seeing you, ${name}!`,
-                nextStep: undefined // End flow
-            };
 
-        } catch (error) {
-            console.error('Booking failed', error);
             return {
-                response: "I'm sorry, an error occurred while saving your booking. Please contact us directly.",
-                nextStep: undefined,
-                action: 'escalate'
+                response: `✅ Appointment Reserved!\n\nService: ${serviceName}\nDate: ${date}\nTime: ${time}\n\n⚠️ **Action Required**: A commitment fee of ₦${fee.toLocaleString()} is required to confirm this booking.\n\nPlease pay here: ${paymentLink}`,
+                nextStep: undefined
             };
         }
+
+            return {
+            response: `✅ Appointment Confirmed!\n\nService: ${serviceName}\nDate: ${date}\nTime: ${time}\n\nWe look forward to seeing you, ${name}!`,
+            nextStep: undefined // End flow
+        };
+
+    } catch(error) {
+        console.error('Booking failed', error);
+        return {
+            response: "I'm sorry, an error occurred while saving your booking. Please contact us directly.",
+            nextStep: undefined,
+            action: 'escalate'
+        };
     }
+}
 
     // --- Helpers ---
     private async findService(clientId: string, query: string) {
-        // Simple fuzzy match or startsWith
-        const services = await prisma.service.findMany({
-            where: { clientId, isActive: true }
-        });
-        const lowerQuery = query.toLowerCase();
-        return services.find((s: any) => s.name.toLowerCase().includes(lowerQuery));
-    }
+    // Simple fuzzy match or startsWith
+    const services = await prisma.service.findMany({
+        where: { clientId, isActive: true }
+    });
+    const lowerQuery = query.toLowerCase();
+    return services.find((s: any) => s.name.toLowerCase().includes(lowerQuery));
+}
 
     private parseDate(input: string): string | null {
-        // TODO: Use 'chrono-node' or date-fns for relative dates
-        // For now, accept YYYY-MM-DD or simple keywords
-        const lower = input.toLowerCase();
-        const today = new Date();
+    // TODO: Use 'chrono-node' or date-fns for relative dates
+    // For now, accept YYYY-MM-DD or simple keywords
+    const lower = input.toLowerCase();
+    const today = new Date();
 
-        // Handle common typos for tomorrow
-        if (lower.includes('tomorrow') || lower.includes('tommorrow') || lower.includes('tomorow') || lower.includes('tmr')) {
-            const tmr = new Date(today);
-            tmr.setDate(today.getDate() + 1);
-            return tmr.toISOString().split('T')[0];
-        }
-        if (lower.includes('today')) {
-            return today.toISOString().split('T')[0];
-        }
-        // Basic Regex for YYYY-MM-DD
-        if (/^\d{4}-\d{2}-\d{2}$/.test(input)) return input;
-
-        return null;
+    // Handle common typos for tomorrow
+    if (lower.includes('tomorrow') || lower.includes('tommorrow') || lower.includes('tomorow') || lower.includes('tmr')) {
+        const tmr = new Date(today);
+        tmr.setDate(today.getDate() + 1);
+        return tmr.toISOString().split('T')[0];
     }
+    if (lower.includes('today')) {
+        return today.toISOString().split('T')[0];
+    }
+    // Basic Regex for YYYY-MM-DD
+    if (/^\d{4}-\d{2}-\d{2}$/.test(input)) return input;
+
+    return null;
+}
 
     private parseTime(input: string): string | null {
-        // Basic validator, returns HH:mm format
-        if (/^\d{1,2}:\d{2}\s?(am|pm)?$/i.test(input)) return input; // Normalize this later
-        if (/^\d{1,2}(am|pm)$/i.test(input)) return input;
-        return null;
-    }
+    // Basic validator, returns HH:mm format
+    if (/^\d{1,2}:\d{2}\s?(am|pm)?$/i.test(input)) return input; // Normalize this later
+    if (/^\d{1,2}(am|pm)$/i.test(input)) return input;
+    return null;
+}
 
-    private async checkAvailability(clientId: string, serviceId: string, dateStr: string, timeStr: string, duration: number = 30): Promise<boolean> {
-        // TODO: Use the real AvailabilityChecker
-        return true;
-    }
+    private async checkAvailability(clientId: string, serviceId: string, dateStr: string, timeStr: string, duration: number = 30): Promise < boolean > {
+    // TODO: Use the real AvailabilityChecker
+    return true;
+}
 }
