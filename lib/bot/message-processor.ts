@@ -52,9 +52,20 @@ export class MessageProcessor {
                 }
             }
 
-            // 1. Check for Rating Response (1-5) - PRIORITIZED
-            // If a user replies "1", we check if they have a pending feedback job first.
-            // If so, it's a rating. If not, it might be a menu selection (Service Match) OR a Flow Input.
+            // 1. Check for Active Flow (if not interrupted) - PRIORITIZED
+            const flowResult = await this.flowEngine.handleMessage(clientId, customerPhone, message, context.customerName);
+            if (flowResult) {
+                console.log(`[MessageProcessor] Handled by FlowEngine`);
+                return {
+                    response: flowResult.response,
+                    confidence: 100,
+                    action: flowResult.action || 'reply',
+                    metadata: { source: 'flow_engine', ...flowResult.data }
+                };
+            }
+
+            // 2. Check for Rating Response (1-5)
+            // Only if a user replies "1-5", AND they have a RECENT pending feedback job (last 24h)
             const ratingMatch = message.trim().match(/^([1-5])(\s*stars?)?$/i);
             if (ratingMatch) {
                 const rating = parseInt(ratingMatch[1]);
@@ -70,31 +81,7 @@ export class MessageProcessor {
                 }
             }
 
-            // 2. Check for Active Flow (if not interrupted)
-            const flowResult = await this.flowEngine.handleMessage(clientId, customerPhone, message, context.customerName);
-            if (flowResult) {
-                console.log(`[MessageProcessor] Handled by FlowEngine`);
-                return {
-                    response: flowResult.response,
-                    confidence: 100,
-                    action: flowResult.action || 'reply',
-                    metadata: { source: 'flow_engine', ...flowResult.data }
-                };
-            }
-
-            // 3. Check FAQs (business-specific answers)
-            const faqMatch = await faqMatcher.findMatch(message, clientId);
-            if (faqMatch && faqMatch.confidence >= 60) {
-                console.log(`[MessageProcessor] FAQ Match (${faqMatch.confidence}%): ${message}`);
-                return {
-                    response: faqMatch.answer,
-                    confidence: faqMatch.confidence,
-                    action: 'reply',
-                    metadata: { source: 'faq' }
-                };
-            }
-
-            // 4. Check for Service Name Match (Trigger Booking)
+            // 3. Check for Service Name Match (Trigger Booking)
             const serviceMatch = await this.findServiceMatch(clientId, message);
             if (serviceMatch) {
                 console.log(`[MessageProcessor] Service Match: ${serviceMatch.name}`);
@@ -108,7 +95,19 @@ export class MessageProcessor {
                 return this.processMessage(message, customerPhone, clientId, context.customerName);
             }
 
-            // 3. Fall back to intent-based responses
+            // 4. Check FAQs (business-specific answers)
+            const faqMatch = await faqMatcher.findMatch(message, clientId);
+            if (faqMatch && faqMatch.confidence >= 60) {
+                console.log(`[MessageProcessor] FAQ Match (${faqMatch.confidence}%): ${message}`);
+                return {
+                    response: faqMatch.answer,
+                    confidence: faqMatch.confidence,
+                    action: 'reply',
+                    metadata: { source: 'faq' }
+                };
+            }
+
+            // 5. Fall back to intent-based responses
             const intent = this.detectIntent(message);
             this.log(`Intent: ${intent} | Msg: ${message}`);
             console.log(`[MessageProcessor] Intent: ${intent} | Msg: ${message}`);
@@ -162,25 +161,23 @@ export class MessageProcessor {
     private async handleRatingResponse(clientId: string, customerPhone: string, rating: number): Promise<{ response: string } | null> {
         try {
             // Find the most recent job where we ASKED for feedback but haven't RECEIVED it yet
-            // Or just the most recent completed job if we assume they are replying to the prompt
+            // AND ensure it was requested recently (e.g., within 24 hours) to avoid false positives on menu selection
+            const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
             const job = await prisma.job.findFirst({
                 where: {
                     clientId,
                     // Match any format: 080..., 234..., +234...
-                    // Since we can't easily do 'in' variants here without passing them,
-                    // we'll try to match roughly.
-                    // Better: We stored the job with a specific phone.
-                    // If we assume the job uses the '0' format (Local), and `customerPhone` is '234' (Intl)
-                    // We should convert incoming to local or try both.
                     OR: [
-                        { customerPhone: customerPhone }, // Exact match
-                        { customerPhone: customerPhone.replace(/^234/, '0') }, // Convert 234 to 0
-                        { customerPhone: customerPhone.replace(/^\+234/, '0') }, // Convert +234 to 0
-                        { customerPhone: '234' + customerPhone.replace(/^0/, '') } // Convert 0 to 234
+                        { customerPhone: customerPhone },
+                        { customerPhone: customerPhone.replace(/^234/, '0') },
+                        { customerPhone: customerPhone.replace(/^\+234/, '0') },
+                        { customerPhone: '234' + customerPhone.replace(/^0/, '') }
                     ],
                     status: 'completed',
                     feedbackRequestSent: true,
-                    feedbackRating: null // Only if not yet rated
+                    feedbackRating: null, // Only if not yet rated
+                    updatedAt: { gte: oneDayAgo } // MUST be recent
                 },
                 orderBy: { completedAt: 'desc' },
                 include: { client: { include: { branding: true } } }
