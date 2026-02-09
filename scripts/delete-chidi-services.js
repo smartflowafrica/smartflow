@@ -6,9 +6,10 @@ async function main() {
     console.log("Searching for client 'Chidi Auto'...");
 
     // Try to find by email first (common pattern)
+    // FIXED: user -> users (Plural relation in schema)
     let client = await prisma.client.findFirst({
         where: {
-            user: { email: { contains: 'chidi', mode: 'insensitive' } }
+            users: { some: { email: { contains: 'chidi', mode: 'insensitive' } } }
         }
     });
 
