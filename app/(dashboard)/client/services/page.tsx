@@ -158,8 +158,13 @@ export default function ServicesPage() {
         setImages(prev => prev.filter((_, i) => i !== index));
     };
 
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
     const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
+        if (isSubmitting) return;
+        setIsSubmitting(true);
+
         const formData = new FormData(e.currentTarget);
 
         const metadata = images.length > 0 ? { images } : undefined;
@@ -200,6 +205,8 @@ export default function ServicesPage() {
         } catch (error: any) {
             console.error(error);
             toast.error(error.message || 'Failed to save service');
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
