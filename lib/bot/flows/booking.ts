@@ -289,7 +289,7 @@ export class BookingFlow implements ChatFlow {
                     // Fetch Client Settings & Integration
                     const client = await prisma.client.findUnique({
                         where: { id: context.clientId },
-                        include: { integration: true }
+                        include: { integrations: true }
                     });
 
                     // Check for bank details in metadata
@@ -299,7 +299,7 @@ export class BookingFlow implements ChatFlow {
                     }
 
                     // Use client key if available, otherwise undefined (will fallback to env in lib/paystack)
-                    const paystackKey = client?.integration?.paystackSecretKey || undefined;
+                    const paystackKey = client?.integrations?.paystackSecretKey || undefined;
 
                     // If no key configured, skip directly to invoice
                     if (!paystackKey && !process.env.PAYSTACK_SECRET_KEY) {
