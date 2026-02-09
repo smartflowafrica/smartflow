@@ -65,18 +65,28 @@ export async function POST(request: Request) {
                 }
             });
 
-            if (Array.isArray(services) && services.length > 0) {
-                await tx.service.createMany({
-                    data: services.map((s: any) => ({
-                        clientId,
-                        name: s.name,
-                        description: s.description,
-                        price: parseFloat(s.price),
-                        category: s.category,
-                        duration: 30,
-                        isActive: true
-                    }))
-                });
+
+            // Only create services if onboarding is NOT already complete (Idempotency Check)
+            const clientData = await tx.client.findUnique({ where: { id: clientId } });
+            const isOnboardingAlreadyComplete = clientData?.metadata && (clientData.metadata as any).onboardingComplete;
+
+            if (!isOnboardingAlreadyComplete && Array.isArray(services) && services.length > 0) {
+                // Check if services already exist to be double sure
+                const existingCount = await tx.service.count({ where: { clientId } });
+
+                if (existingCount === 0) {
+                    await tx.service.createMany({
+                        data: services.map((s: any) => ({
+                            clientId,
+                            name: s.name,
+                            description: s.description,
+                            price: parseFloat(s.price),
+                            category: s.category,
+                            duration: 30,
+                            isActive: true
+                        }))
+                    });
+                }
             }
         });
 
